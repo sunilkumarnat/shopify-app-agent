@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import type { ClaudeRunner } from "../claude.ts";
+import { outputSchemaOf, type ClaudeRunner } from "../claude.ts";
 import type { RunState } from "../state/run-store.ts";
 import { AppSpecSchema, SurfaceSchema, type AppSpec } from "../state/spec.ts";
 import type { Phase } from "./types.ts";
@@ -35,8 +35,7 @@ export const ArchitectureOutputSchema = z.object({
 });
 export type ArchitectureOutput = z.infer<typeof ArchitectureOutputSchema>;
 
-// The Agent SDK's validator rejects the draft 2020-12 "$schema" URI zod emits, so drop it.
-const { $schema: _draft, ...ARCHITECTURE_JSON_SCHEMA } = z.toJSONSchema(ArchitectureOutputSchema);
+const ARCHITECTURE_JSON_SCHEMA = outputSchemaOf(ArchitectureOutputSchema);
 
 const SYSTEM_PROMPT = `You are a senior Shopify app architect. You turn a merchant-facing app idea into an architecture a developer can build from without further questions.
 

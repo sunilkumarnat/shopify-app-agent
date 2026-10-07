@@ -19,6 +19,7 @@ const REPLIES: Record<string, string> = {
   devStore: "stock-signal-dev.myshopify.com",
   testPreview: "ready",
   hosting: "Fly.io",
+  deploySecrets: "done",
 };
 
 async function setup(
@@ -28,7 +29,7 @@ async function setup(
   await store.init("stock-signal");
   const { claude, requests } = fakeClaude();
   const { runner, commands } = fakeRunner({ failingRounds: opts.failingRounds, failingTestRuns: opts.failingTestRuns });
-  const phases = createPhases({ claude, runner, interactive: opts.interactive ?? true });
+  const phases = createPhases({ claude, runner, interactive: opts.interactive ?? true, status: async () => 200 });
   const replies = opts.replies ?? REPLIES;
   const asked: string[] = [];
 
@@ -109,8 +110,21 @@ describe("the development process", () => {
     expect(builds[1]!.prompt).toContain("error TS2322");
     expect(builds[0]!.disallowedTools).toContain("Bash(shopify app deploy:*)");
 
+    expect(requests.map((r) => r.role).filter((r) => r !== "builder")).toEqual([
+      "architect",
+      "reviewer",
+      "tester",
+      "deployer",
+    ]);
+    expect(await readFile(join(store.appDir, "checklist.md"), "utf8")).toContain("⚠️ **4.1.2 Privacy policy**");
+    expect(await readFile(join(store.appDir, "deploy-plan.md"), "utf8")).toContain("1. `fly deploy`: Build and deploy the app");
+    expect(commands).not.toContain("fly deploy");
+
     await approve(store, "deploy");
-    expect((await advance(store, phases)).status).toBe("done");
+    expect((await answerAll()).status).toBe("done");
+    expect(asked.slice(10)).toEqual(["deploySecrets"]);
+    expect(commands.slice(-2)).toEqual(["fly deploy", "shopify app deploy"]);
+    expect(await readFile(join(store.appDir, "listing.md"), "utf8")).toContain("**App card subtitle:** Show shoppers when stock runs low");
   });
 
   it("stops the build when checks keep failing", async () => {

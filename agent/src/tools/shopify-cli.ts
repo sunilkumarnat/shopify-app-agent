@@ -12,6 +12,7 @@ const ALLOWED: string[][] = [
   ["app", "config", "link"],
   ["app", "function"],
   ["theme", "check"],
+  ["doc", "fetch"],
 ];
 
 // Subcommands that change what merchants can install; each needs a human approval.

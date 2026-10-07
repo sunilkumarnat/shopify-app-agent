@@ -1,4 +1,5 @@
 import { query, type Options } from "@anthropic-ai/claude-agent-sdk";
+import { z } from "zod";
 import { MODELS, type AgentRole } from "./models.ts";
 
 export interface ClaudeRequest {
@@ -22,6 +23,13 @@ export type ClaudeResult =
   | { ok: false; error: string; sessionId?: string; costUsd: number };
 
 export type ClaudeRunner = (request: ClaudeRequest) => Promise<ClaudeResult>;
+
+// JSON schema for structured output. The Agent SDK's validator rejects the draft 2020-12
+// "$schema" URI zod emits, so it is dropped.
+export function outputSchemaOf(schema: z.ZodType): Record<string, unknown> {
+  const { $schema: _draft, ...rest } = z.toJSONSchema(schema);
+  return rest;
+}
 
 const DEFAULT_MAX_BUDGET_USD = 10;
 

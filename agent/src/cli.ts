@@ -20,7 +20,7 @@ In a terminal, new and resume ask questions and approvals interactively.`;
 const GATE_PROMPTS: Record<GateName, string> = {
   architecture: "Review architecture.md. Type 'yes' to confirm it, or describe the changes you want",
   "start-development": "Start development now? Type 'yes' to confirm",
-  deploy: "The checklist and tests have passed. Deploy the app? Type 'yes' to confirm",
+  deploy: "The checklist and tests have passed. Review deploy-plan.md. Deploy the app as planned? Type 'yes' to confirm",
 };
 
 // npm runs workspace scripts from agent/, so resolve paths from where the user ran the command.
@@ -50,7 +50,8 @@ async function interactive(store: RunStore): Promise<RunState> {
         if (!reply.trim()) continue;
         await answer(store, reply);
       } else if (state.pendingGate) {
-        console.log(state.pendingGate === "architecture" ? `\nArchitecture: ${join(store.appDir, "architecture.md")}` : "");
+        const review = { architecture: "architecture.md", "start-development": undefined, deploy: "deploy-plan.md" }[state.pendingGate];
+        console.log(review ? `\nReview: ${join(store.appDir, review)}` : "");
         const reply = (await rl.question(`${GATE_PROMPTS[state.pendingGate]}\n> `)).trim();
         if (/^y(es)?$/i.test(reply)) await approve(store, state.pendingGate);
         else if (state.pendingGate === "architecture" && reply) await requestChanges(store, PHASES, reply);

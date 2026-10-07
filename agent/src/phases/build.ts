@@ -8,10 +8,10 @@ import type { Phase } from "./types.ts";
 
 export const FIX_ROUNDS = 3;
 
-const BUILDER_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash"];
+export const BUILDER_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash"];
 
 // Commands the builder may run without asking. Everything else is denied.
-const BUILDER_ALLOWED = [
+export const BUILDER_ALLOWED = [
   "Read",
   "Write",
   "Edit",
@@ -28,7 +28,7 @@ const BUILDER_ALLOWED = [
   "Bash(ls:*)",
 ];
 
-const BUILDER_DENIED = ["Bash(shopify app deploy:*)", "Bash(shopify app release:*)", "Bash(git push:*)"];
+export const BUILDER_DENIED = ["Bash(shopify app deploy:*)", "Bash(shopify app release:*)", "Bash(git push:*)"];
 
 const SYSTEM_PROMPT = `You are building a Shopify app inside a project scaffolded by Shopify CLI from the React Router template (TypeScript). Implement exactly the architecture you are given.
 
