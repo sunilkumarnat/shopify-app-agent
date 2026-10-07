@@ -133,7 +133,8 @@ workspace/<app-id>/
 | `agent/src/tools/` | Shopify CLI wrapper (allowlist, deploy needs confirmation), check runner, command runner, Playwright report reader |
 | `agent/src/state/` | App spec schema and saved run state |
 | `agent/src/models.ts` | Which Claude model each agent role uses |
-| `evals/apps/` | Sample apps for testing the agent end to end, starting with Stock Signal |
+| `agent/src/evals/` | Eval runner: plays the user for each sample app, scores the result, writes the report |
+| `evals/apps/` | Sample apps the agent is scored on, one `eval.json` each: Stock Signal, size chart, back in stock, order tagger |
 | `knowledge/` | Curated Shopify patterns for agent context |
 | `docs/design.md` | Design doc |
 
@@ -145,3 +146,27 @@ npm test            # unit tests (vitest)
 ```
 
 CI runs both on every pull request.
+
+## Evals
+
+Evals check that the agent still designs good apps after a change. Each app in `evals/apps/` has an `eval.json` with the answers a user would give and what a good result must contain: the surfaces, required and forbidden scopes, patterns the architecture must mention, and acceptance criteria.
+
+```sh
+npm run evals                          # every app, up to the architecture (real Claude, about $0.50 an app)
+npm run evals -- --app order-tagger    # one app
+npm run evals -- --depth build         # also scaffold and build each app (needs a terminal logged in to Shopify)
+```
+
+The agent plays the user, answering each question from `eval.json` and giving every confirmation. Each result is then scored on these checks:
+
+- every architecture section is present, in order
+- the surfaces are the expected ones
+- the required scopes are requested and the forbidden ones are not
+- the compliance webhooks are included
+- every plan the user named is covered
+- the architecture mentions the expected patterns
+- a grader model judges each acceptance criterion
+
+An app passes at 80% by default (`minScore`). The report is written to `evals/results/` and the generated apps to `workspace/evals/`. With `--depth build` it also checks that the build is green and that `shopify.app.toml` has the right scopes and compliance webhooks. Set `EVAL_DEV_STORE` in `.env` to choose the store used for build evals.
+
+The Evals workflow runs the architecture evals on every pull request that changes `agent/src/` or `evals/apps/`, and shows the report in the run summary. It needs an `ANTHROPIC_API_KEY` repository secret (Settings > Secrets and variables > Actions) and skips itself without one.

@@ -1,0 +1,47 @@
+{
+  "id": "order-tagger",
+  "answers": {
+    "name": "Auto Tagger",
+    "description": "Tags new orders automatically by rules so merchants can filter and fulfil them faster.",
+    "functionalities": "Create rules such as 'order total over an amount', 'shipping country is' or 'contains a product' with a tag to add; Tag every new order that matches a rule; Show a log of which orders were tagged by which rule",
+    "flow": "The merchant installs the app, creates rules with the tag each should add, and turns them on. When a new order comes in, the app checks the rules and adds the tags. The merchant reviews the log in the app.",
+    "hasPlans": "yes",
+    "plans": "Basic: $0, up to 3 rules; Pro: $5/month, 7-day trial, unlimited rules",
+    "developerAccount": "yes",
+    "devStore": "your-dev-store.myshopify.com"
+  },
+  "expect": {
+    "surfaces": [
+      "embedded-admin"
+    ],
+    "scopes": {
+      "required": [
+        "write_orders"
+      ],
+      "forbidden": [
+        "write_products",
+        "read_customers",
+        "write_customers",
+        "read_all_orders"
+      ]
+    },
+    "mentions": [
+      {
+        "label": "the orders/create webhook",
+        "pattern": "orders/create"
+      },
+      {
+        "label": "the tagsAdd mutation",
+        "pattern": "tagsAdd"
+      }
+    ],
+    "criteria": [
+      "The architecture does not add a theme app extension, since shoppers see nothing.",
+      "Webhook handling is idempotent, so a redelivered orders/create does not tag twice or log twice.",
+      "The Basic plan's 3-rule limit is enforced on the server.",
+      "The log has a retention limit or pagination so it does not grow without bound.",
+      "Every admin screen has loading, empty and error states."
+    ]
+  },
+  "minScore": 0.8
+}

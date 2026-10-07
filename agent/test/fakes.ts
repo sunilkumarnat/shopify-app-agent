@@ -45,6 +45,8 @@ const STRUCTURED: Partial<Record<ClaudeRequest["role"], unknown>> = {
   reviewer: CHECKLIST,
   deployer: DEPLOY_PLAN,
   copywriter: LISTING,
+  // Grades every criterion as met.
+  grader: { results: [1, 2, 3, 4, 5].map((index) => ({ index, met: true, reason: "ok" })) },
 };
 
 // Records every Claude request and answers like a well-behaved architect and builder.

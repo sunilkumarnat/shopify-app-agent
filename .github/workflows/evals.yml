@@ -1,0 +1,41 @@
+name: Evals
+
+# Scores the agent's architecture on every sample app in evals/apps whenever the agent or
+# the apps change. Uses real Claude (about $2 a run), so it needs the ANTHROPIC_API_KEY
+# repository secret and skips itself without it.
+on:
+  pull_request:
+    paths:
+      - "agent/src/**"
+      - "agent/package.json"
+      - "evals/apps/**"
+  workflow_dispatch:
+
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run evals
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "ANTHROPIC_API_KEY is not set for this repository; skipping evals." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npm run -s evals
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: |
+            evals/results/
+            workspace/evals/
+          if-no-files-found: ignore

@@ -117,7 +117,7 @@ Chosen because it is small but touches every surface the agent must master.
 
 Success criteria for v1 of the agent: from the one-paragraph idea above, it produces a running Stock Signal on a dev store with all checks green and only the questions, the Shopify login and the three confirmations in section 5.
 
-Follow-up eval apps once that works: a post-purchase upsell (Checkout UI extension), a volume discount (Shopify Function), a size-chart block (theme extension only).
+Further eval apps (M4) stay within the surfaces the agent builds today: **Fit Guide** (size charts; free app, admin and theme block), **Restock Alert** (back-in-stock emails; shopper data, so the compliance webhooks carry real deletions) and **Auto Tagger** (order tagging; admin only, so no theme extension should be designed). A post-purchase upsell (Checkout UI extension) and a volume discount (Shopify Function) need those surfaces added to the agent first.
 
 ## 7. Starter repo layout
 
@@ -135,8 +135,8 @@ shopify-app-agent/
 │   └── package.json
 ├── knowledge/                     # curated Shopify patterns: auth, webhooks, billing, Polaris, theme blocks
 ├── evals/
-│   ├── apps/stock-signal/         # idea.md, expected-spec.md, acceptance checks
-│   └── run-evals.ts               # runs the agent end to end on each eval app, scores checks
+│   ├── apps/<app>/eval.json       # answers, expected surfaces and scopes, patterns, acceptance criteria
+│   └── results/                   # eval reports (gitignored); the runner is agent/src/evals/
 ├── workspace/                     # generated apps (gitignored; each is its own git repo)
 ├── docs/                          # this design doc, ADRs
 ├── .env.example                   # ANTHROPIC_API_KEY, SHOPIFY_CLI_PARTNERS_TOKEN, DEV_STORE
@@ -158,4 +158,4 @@ The agent is TypeScript to match the Shopify ecosystem (CLI, templates, App Brid
 2. **M1, plans, architecture and build:** plans step; Claude writes the architecture from the answers; scaffold per Shopify's guide; Claude builds the app and fixes it until `run_checks()` is green.
 3. **M2, test functionalities (done):** dev-store install via `shopify app dev`, a Playwright test per functionality, fix loop, `test-report.md` with screenshots, theme block visible.
 4. **M3, checklist, deploy and listing (done):** App Store self-review checklist with fixes, deploy plan reviewed before the deploy confirmation, host deploy and `shopify app deploy`, health check, listing draft.
-5. **M4, evals:** three more eval apps, scored automatically on every agent change.
+5. **M4, evals (done):** three more eval apps (four in all). `npm run evals` plays the user and scores each architecture (structure, surfaces, scopes, compliance webhooks, plans, patterns, and acceptance criteria judged by a grader model); `--depth build` also scaffolds and builds. The Evals workflow runs them on every pull request that changes the agent. First run: all four apps 100%, about $2.
