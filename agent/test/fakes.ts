@@ -10,6 +10,43 @@ export const ARCHITECTURE = {
   architectureMarkdown: "# Stock Signal\n\n## Overview\nBadge for low stock.",
 };
 
+export const CHECKLIST = {
+  requirements: [
+    { id: "1.1.1", name: "Use session tokens", status: "passing", fixed: false, note: "app/shopify.server.ts" },
+    { id: "2.3.1", name: "Compliance webhooks", status: "passing", fixed: true, note: "Added to shopify.app.toml" },
+    { id: "4.1.2", name: "Privacy policy", status: "needs-review", fixed: false, note: "No URL in the code" },
+  ],
+  skippedGroups: [{ group: "5 Checkout", reason: "No checkout extension detected" }],
+};
+
+export const DEPLOY_PLAN = {
+  appUrl: "https://stock-signal.fly.dev",
+  summary: "Fly.io with Postgres.",
+  files: ["Dockerfile", "fly.toml"],
+  secrets: [{ name: "SHOPIFY_API_SECRET", purpose: "Verifies Shopify requests", howToSet: "fly secrets set SHOPIFY_API_SECRET=..." }],
+  commands: [{ cmd: "fly", args: ["deploy"], purpose: "Build and deploy the app" }],
+};
+
+export const LISTING = {
+  appName: "Stock Signal",
+  subtitle: "Show shoppers when stock runs low",
+  introduction: "Turn low stock into urgency with an Only N left badge.",
+  details: "Pick products and a threshold; the badge appears on product pages.",
+  features: ["Only N left badge on product pages", "Per-product thresholds"],
+  pricing: [{ plan: "Pro", price: "$29/month", trial: "7-day free trial", features: ["Unlimited products"] }],
+  categories: ["Store design"],
+  searchTerms: ["low stock", "scarcity"],
+  screenshots: [{ caption: "The badge", shows: "A product page with the badge", from: "F3-1.png" }],
+  reviewInstructions: "Install, pick a product, set the threshold to 10, open the product page.",
+  todo: ["Support email", "Privacy policy URL"],
+};
+
+const STRUCTURED: Partial<Record<ClaudeRequest["role"], unknown>> = {
+  reviewer: CHECKLIST,
+  deployer: DEPLOY_PLAN,
+  copywriter: LISTING,
+};
+
 // Records every Claude request and answers like a well-behaved architect and builder.
 export function fakeClaude(overrides: Partial<Record<ClaudeRequest["role"], () => ClaudeResult>> = {}) {
   const requests: ClaudeRequest[] = [];
@@ -20,6 +57,8 @@ export function fakeClaude(overrides: Partial<Record<ClaudeRequest["role"], () =
     if (request.role === "architect") {
       return { ok: true, text: "", structured: ARCHITECTURE, sessionId: "arch-1", costUsd: 0.5 };
     }
+    const structured = STRUCTURED[request.role];
+    if (structured) return { ok: true, text: "", structured, sessionId: `${request.role}-1`, costUsd: 1 };
     return { ok: true, text: "built", structured: undefined, sessionId: "build-1", costUsd: 2 };
   };
   return { claude, requests };
@@ -47,6 +86,9 @@ export function fakeRunner({ failingRounds = 0, failingTestRuns = 0 }: { failing
     if (line.startsWith("npm run typecheck")) {
       typecheckRuns++;
       if (typecheckRuns <= failingRounds) return { code: 2, stdout: "", stderr: "error TS2322: bad type" };
+    }
+    if (line.startsWith("shopify doc fetch")) {
+      await writeFile(args[args.indexOf("--output") + 1]!, "# Requirements\n");
     }
     if (line.startsWith("npx playwright test")) {
       playwrightRuns++;
