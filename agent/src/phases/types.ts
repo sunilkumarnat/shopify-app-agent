@@ -15,5 +15,7 @@ export interface Phase {
   name: string;
   // Approvals that must exist before this phase may start.
   gatesBefore?: GateName[];
+  // How many times the orchestrator runs a failing phase before stopping (default 3).
+  maxAttempts?: number;
   run(ctx: PhaseContext): Promise<PhaseResult>;
 }

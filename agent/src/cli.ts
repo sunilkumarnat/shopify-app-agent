@@ -4,7 +4,7 @@ import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { advance, answer, approve, requestChanges } from "./orchestrator.ts";
-import { PHASES } from "./phases/index.ts";
+import { createDefaultPhases } from "./phases/index.ts";
 import { GateSchema, RunStore, type GateName, type RunState } from "./state/run-store.ts";
 
 const USAGE = `Usage:
@@ -28,6 +28,7 @@ const invokedFrom = process.env.INIT_CWD ?? process.cwd();
 const envFile = join(invokedFrom, ".env");
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 const workspaceRoot = resolve(invokedFrom, process.env.AGENT_WORKSPACE ?? "workspace");
+const PHASES = createDefaultPhases(Boolean(process.stdin.isTTY));
 const storeFor = (appId: string) => new RunStore(join(workspaceRoot, appId));
 
 function report(state: RunState): void {

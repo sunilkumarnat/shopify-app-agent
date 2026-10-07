@@ -49,10 +49,8 @@ Non-goals for v1: Hydrogen storefronts, POS extensions, App Store submission (th
 |---|---|---|
 | Orchestrator | Runs the phase state machine, keeps `spec.md` and `run-log.jsonl`, decides retries, asks the user's questions and confirmations | `claude-opus-5-5` |
 | Product/UX agent | Asks the process questions, then turns the answers into the architecture: screens, data model, scopes, extension points | `claude-opus-5-5` |
-| Builder agents | Write code for one slice each: backend routes and data, admin UI, theme extension, webhooks | `claude-sonnet-5-5` |
-| Reviewer agent | Reviews diffs for scope creep, tenant isolation, webhook HMAC, GDPR handlers, Polaris misuse, a11y | `claude-opus-5-5` |
-| Fixer loop | Reads failing check output and patches; capped at N attempts per check before escalating | `claude-sonnet-5-5` |
-| Cheap classifiers | Log triage, "is this error ours or the environment's" | `claude-haiku-4-5-20251001` |
+| Builder agent | Implements the architecture in the scaffolded project, writes tests, then fixes failing checks in the same session (up to 3 rounds) | `claude-opus-5-5` |
+| Reviewer agent | Reviews diffs for scope creep, tenant isolation, webhook HMAC, GDPR handlers, Polaris misuse, a11y | `claude-opus-5-5` (from M3) |
 
 All agents share a cached system prompt (Shopify conventions, repo layout, coding rules) using prompt caching, so the long context is paid for once per run.
 
@@ -86,15 +84,16 @@ This is the process Sunil set on 2026-10-07. The agent always follows these step
 | # | Step | Agent does | User does | Exit check |
 |---|---|---|---|---|
 | 1 | App details | Asks for the app's name and description | Answers | Both answered |
-| 2 | Functionalities | Asks for the list of functionalities | Answers, one per line | At least one functionality |
+| 2 | Functionalities | Asks for the list of functionalities | Answers, separated by semicolons | At least one functionality |
 | 3 | Basic flow | Asks for the app's basic flow (merchant from install to daily use, what shoppers see) | Answers | Answered |
-| 4 | Architecture | Analyzes the answers and writes `architecture.md`: screens, data model, Admin GraphQL operations, scopes, webhooks, theme extension blocks | **Reviews and confirms it, or describes changes** (the agent regenerates and asks again) | Spec validates; every functionality maps to a screen or extension |
-| 5 | Start development | Asks whether the user has a Shopify Partner account and which development store to use, then asks for confirmation to start. Credentials go in `.env`, never in an answer. | **Answers and confirms** | Dev store named, confirmation given |
-| 6 | Scaffold and build | `shopify app init`, extensions, then builders implement each slice with tests; reviewer audits the diff | — | `run_checks()` green |
-| 7 | Shopify checklist | Checks the app against Shopify's App Store requirements and Built for Shopify recommendations (auth, scopes, compliance webhooks, Polaris, performance, a11y) and fixes what fails | — | No blocking items |
-| 8 | Test functionalities | Installs on the dev store, runs a Playwright flow for each functionality, adds the app block to a theme, captures screenshots | — | Every functionality passes |
-| 9 | Deploy | Asks where to host the app, then asks for confirmation; deploys to that host and runs `shopify app deploy` | **Answers and confirms the deploy** | Health check passes, app version created |
-| 10 | Listing suggestions | Drafts App Store listing details: name, tagline, description, feature list, screenshots to take, pricing ideas, support and privacy links | Reviews | — |
+| 4 | Plans | Asks whether the app has paid plans; if it does, asks for each plan's name, price, billing interval, trial days and features | Answers | Answered (plan details only for a paid app) |
+| 5 | Architecture | Claude analyzes the answers and writes `architecture.md`: functionalities mapped to where they are built, plans and billing, screens, data model, Admin GraphQL operations, webhooks, scopes, open questions | **Reviews and confirms it, or describes changes** (the agent regenerates and asks again) | Spec validates; every functionality maps to a screen or extension |
+| 6 | Start development | Asks whether the user has a Shopify developer account and which development store to use, then asks for confirmation to start. Credentials go in `.env`, never in an answer. | **Answers and confirms** | Dev store named, confirmation given |
+| 7 | Scaffold and build | Follows Shopify's [scaffold guide](https://shopify.dev/docs/apps/build/scaffold-app): `shopify app init --template reactRouter --flavor typescript --name <app name>` in the terminal (the user logs in and picks the organization), then `shopify app generate extension` for the theme app extension. The builder agent then implements the architecture and fixes failing checks. | Logs in to Shopify | `run_checks()` green |
+| 8 | Shopify checklist | Checks the app against Shopify's App Store requirements and Built for Shopify recommendations (auth, scopes, compliance webhooks, Polaris, performance, a11y) and fixes what fails | — | No blocking items |
+| 9 | Test functionalities | Installs on the dev store, runs a Playwright flow for each functionality, adds the app block to a theme, captures screenshots | — | Every functionality passes |
+| 10 | Deploy | Asks where to host the app, then asks for confirmation; deploys to that host and runs `shopify app deploy` | **Answers and confirms the deploy** | Health check passes, app version created |
+| 11 | Listing suggestions | Drafts App Store listing details: name, tagline, description, feature list, screenshots to take, pricing ideas, support and privacy links | Reviews | — |
 
 Failure handling: each check gets up to 3 fix attempts. After that the orchestrator stops, writes what failed and what it tried into the run log, and asks the user.
 
@@ -113,7 +112,7 @@ Chosen because it is small but touches every surface the agent must master.
 | Webhooks | `inventory_levels/update` to keep a cache warm; compliance webhooks |
 | Scopes | `read_products`, `read_inventory`, `write_products` (metafields) only |
 
-Success criteria for v1 of the agent: from the one-paragraph idea above, it produces a running Stock Signal on a dev store with all checks green and only the questions and three confirmations in section 5.
+Success criteria for v1 of the agent: from the one-paragraph idea above, it produces a running Stock Signal on a dev store with all checks green and only the questions, the Shopify login and the three confirmations in section 5.
 
 Follow-up eval apps once that works: a post-purchase upsell (Checkout UI extension), a volume discount (Shopify Function), a size-chart block (theme extension only).
 
@@ -153,7 +152,7 @@ The agent is TypeScript to match the Shopify ecosystem (CLI, templates, App Brid
 ## 9. Milestones
 
 1. **M0, skeleton:** repo, orchestrator with phases stubbed, tool wrappers for CLI and checks.
-2. **M1, architecture and build:** Claude writes the real architecture from the answers, then scaffolds Stock Signal and gets `run_checks()` green.
+2. **M1, plans, architecture and build:** plans step; Claude writes the architecture from the answers; scaffold per Shopify's guide; Claude builds the app and fixes it until `run_checks()` is green.
 3. **M2, test functionalities:** dev-store install, a Playwright flow per functionality, screenshots, theme block visible.
 4. **M3, checklist, deploy and listing:** Shopify checklist step, hosted deploy and `shopify app deploy` after confirmation, listing suggestions.
 5. **M4, evals:** three more eval apps, scored automatically on every agent change.
