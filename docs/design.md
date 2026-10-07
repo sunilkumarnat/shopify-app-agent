@@ -1,6 +1,6 @@
 # Shopify App Agent: Design Doc
 
-_Status: v1, decisions confirmed by Sunil · 2026-10-07 · Owner: Sunil_
+_Status: v1 · 2026-10-07 · Owner: Sunil_
 
 ## 1. Goal
 
@@ -77,7 +77,7 @@ Fixed defaults so the agent works from one well-trodden path:
 - **Data:** Prisma with SQLite locally and Postgres in production; app-owned metafields and metaobjects where merchant data belongs on the shop.
 - **Storefront:** theme app extension (app blocks and app embeds, Liquid plus small vanilla JS/CSS assets).
 - **Webhooks:** declared in `shopify.app.toml` (app-specific subscriptions), including mandatory compliance topics.
-- **Hosting:** Fly.io (app plus Fly Postgres), deployed with `fly deploy` after the user confirms the deploy.
+- **Hosting:** whatever the user names when the agent asks (step 9), deployed after the user confirms the deploy.
 
 ## 5. Workflow: the development process
 
@@ -89,11 +89,11 @@ This is the process Sunil set on 2026-10-07. The agent always follows these step
 | 2 | Functionalities | Asks for the list of functionalities | Answers, one per line | At least one functionality |
 | 3 | Basic flow | Asks for the app's basic flow (merchant from install to daily use, what shoppers see) | Answers | Answered |
 | 4 | Architecture | Analyzes the answers and writes `architecture.md`: screens, data model, Admin GraphQL operations, scopes, webhooks, theme extension blocks | **Reviews and confirms it, or describes changes** (the agent regenerates and asks again) | Spec validates; every functionality maps to a screen or extension |
-| 5 | Start development | Asks for confirmation to start | **Confirms** | Confirmation given |
+| 5 | Start development | Asks whether the user has a Shopify Partner account and which development store to use, then asks for confirmation to start. Credentials go in `.env`, never in an answer. | **Answers and confirms** | Dev store named, confirmation given |
 | 6 | Scaffold and build | `shopify app init`, extensions, then builders implement each slice with tests; reviewer audits the diff | — | `run_checks()` green |
 | 7 | Shopify checklist | Checks the app against Shopify's App Store requirements and Built for Shopify recommendations (auth, scopes, compliance webhooks, Polaris, performance, a11y) and fixes what fails | — | No blocking items |
 | 8 | Test functionalities | Installs on the dev store, runs a Playwright flow for each functionality, adds the app block to a theme, captures screenshots | — | Every functionality passes |
-| 9 | Deploy | Deploys the host to Fly.io and runs `shopify app deploy` | **Confirms the deploy** | Health check passes, app version created |
+| 9 | Deploy | Asks where to host the app, then asks for confirmation; deploys to that host and runs `shopify app deploy` | **Answers and confirms the deploy** | Health check passes, app version created |
 | 10 | Listing suggestions | Drafts App Store listing details: name, tagline, description, feature list, screenshots to take, pricing ideas, support and privacy links | Reviews | — |
 
 Failure handling: each check gets up to 3 fix attempts. After that the orchestrator stops, writes what failed and what it tried into the run log, and asks the user.
@@ -157,9 +157,3 @@ The agent is TypeScript to match the Shopify ecosystem (CLI, templates, App Brid
 3. **M2, test functionalities:** dev-store install, a Playwright flow per functionality, screenshots, theme block visible.
 4. **M3, checklist, deploy and listing:** Shopify checklist step, hosted deploy and `shopify app deploy` after confirmation, listing suggestions.
 5. **M4, evals:** three more eval apps, scored automatically on every agent change.
-
-## 10. Decisions (confirmed by Sunil, 2026-10-07)
-
-1. **Shopify access:** Sunil has a Partner account and a dev store the agent can use. Credentials are supplied via env, never committed.
-2. **Hosting:** Fly.io is the default target for generated apps.
-3. **Agent form factor:** a local CLI first; a hosted service with a web UI may come later.

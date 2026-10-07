@@ -10,14 +10,14 @@ The agent follows the same process for every app (`docs/design.md`, section 5):
 2. Asks for the app's functionalities
 3. Asks for the app's basic flow
 4. Writes `architecture.md` from your answers and asks you to confirm it or describe changes
-5. Asks for confirmation to start development
+5. Asks about your Shopify Partner account and development store, then asks for confirmation to start development
 6. Scaffolds and builds the app
 7. Checks it against Shopify's App Store requirements and Built for Shopify recommendations
 8. Tests every functionality on your dev store
-9. Asks for confirmation, then deploys
+9. Asks where to host the app and for confirmation, then deploys
 10. Suggests App Store listing details
 
-Status (M0): steps 1 to 5 and every confirmation work; the architecture is a fixed outline of your answers, and steps 6 to 10 are stubs. Nothing calls Claude or Shopify yet.
+Status (M0): every question and confirmation works; the architecture is a fixed outline of your answers, and steps 6 to 10 are stubs. Nothing calls Claude or Shopify yet.
 
 ## Usage
 

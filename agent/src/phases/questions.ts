@@ -23,4 +23,17 @@ export const QUESTIONS = {
     id: "flow",
     prompt: "Describe the app's basic flow: what the merchant does from install to everyday use, and what shoppers see.",
   },
+  partnerAccount: {
+    id: "partnerAccount",
+    prompt:
+      "Do you have a Shopify Partner account the agent can use? (yes/no) Credentials go in .env, never in this answer.",
+  },
+  devStore: {
+    id: "devStore",
+    prompt: "Which development store should the agent install and test the app on? (for example my-store.myshopify.com)",
+  },
+  hosting: {
+    id: "hosting",
+    prompt: "Where should the app be hosted? (for example Fly.io, Render, Heroku, or your own server)",
+  },
 } satisfies Record<string, Question>;

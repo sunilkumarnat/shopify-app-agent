@@ -16,11 +16,13 @@ export const PHASES: Phase[] = [
   askPhase("functionalities", [QUESTIONS.functionalities]),
   askPhase("flow", [QUESTIONS.flow]),
   architecture,
-  // Scaffolding links the Partner app, so it waits for both confirmations.
-  stub("scaffold", ["architecture", "start-development"]),
+  // Asked once the architecture is confirmed, just before the start-development confirmation.
+  { ...askPhase("shopify-access", [QUESTIONS.partnerAccount, QUESTIONS.devStore]), gatesBefore: ["architecture"] },
+  stub("scaffold", ["start-development"]),
   stub("build"),
   stub("shopify-checklist"),
   stub("test"),
+  askPhase("hosting", [QUESTIONS.hosting]),
   stub("deploy", ["deploy"]),
   stub("listing-suggestions"),
 ];

@@ -55,15 +55,22 @@ describe("the development process", () => {
       description: "Shows an 'Only N left' badge when stock is low.",
       functionalities: "- Pick products\n- Set a threshold; Show the badge on product pages",
       flow: "Merchant installs, picks products, sets thresholds; shoppers see the badge.",
+      partnerAccount: "yes",
+      devStore: "stock-signal-dev.myshopify.com",
+      hosting: "Fly.io",
+    };
+    const answerAll = async () => {
+      let next = await advance(store, PHASES);
+      while (next.status === "awaiting-input") {
+        asked.push(next.pendingQuestion!.id);
+        await answer(store, replies[next.pendingQuestion!.id]!);
+        next = await advance(store, PHASES);
+      }
+      return next;
     };
 
-    let state = await advance(store, PHASES);
     const asked: string[] = [];
-    while (state.status === "awaiting-input") {
-      asked.push(state.pendingQuestion!.id);
-      await answer(store, replies[state.pendingQuestion!.id]!);
-      state = await advance(store, PHASES);
-    }
+    let state = await answerAll();
     expect(asked).toEqual(["name", "description", "functionalities", "flow"]);
     expect(state).toMatchObject({ status: "awaiting-approval", pendingGate: "architecture" });
 
@@ -76,9 +83,11 @@ describe("the development process", () => {
     expect(await readFile(join(store.appDir, "architecture.md"), "utf8")).toContain("Add a CSV export");
 
     await approve(store, "architecture");
-    expect((await advance(store, PHASES)).pendingGate).toBe("start-development");
+    expect((await answerAll()).pendingGate).toBe("start-development");
+    expect(asked.slice(4)).toEqual(["partnerAccount", "devStore"]);
     await approve(store, "start-development");
-    expect((await advance(store, PHASES)).pendingGate).toBe("deploy");
+    expect((await answerAll()).pendingGate).toBe("deploy");
+    expect(asked.slice(6)).toEqual(["hosting"]);
     await approve(store, "deploy");
     expect((await advance(store, PHASES)).status).toBe("done");
   });
