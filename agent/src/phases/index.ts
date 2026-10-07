@@ -4,6 +4,7 @@ import { createArchitecturePhase } from "./architecture.ts";
 import { createBuildPhase } from "./build.ts";
 import { askPhase, plansPhase, QUESTIONS } from "./questions.ts";
 import { createScaffoldPhase } from "./scaffold.ts";
+import { createTestPhase } from "./test.ts";
 import type { Phase } from "./types.ts";
 
 export interface PhaseDeps {
@@ -32,7 +33,7 @@ export const createPhases = ({ claude, runner, interactive }: PhaseDeps): Phase[
   createScaffoldPhase({ runner, interactive }),
   createBuildPhase({ claude, runner }),
   stub("shopify-checklist"),
-  stub("test"),
+  createTestPhase({ claude, runner }),
   askPhase("hosting", [QUESTIONS.hosting]),
   stub("deploy", ["deploy"]),
   stub("listing-suggestions"),

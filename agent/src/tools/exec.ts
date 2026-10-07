@@ -9,17 +9,17 @@ export interface CommandResult {
 export type CommandRunner = (
   cmd: string,
   args: string[],
-  opts: { cwd: string; timeoutMs?: number; interactive?: boolean },
+  opts: { cwd: string; timeoutMs?: number; interactive?: boolean; env?: Record<string, string> },
 ) => Promise<CommandResult>;
 
 // Runs a command without a shell so arguments are never re-interpreted. Interactive commands
 // share this terminal so the user can answer their prompts (Shopify login, organization).
-export const runCommand: CommandRunner = (cmd, args, { cwd, timeoutMs = 10 * 60_000, interactive = false }) =>
+export const runCommand: CommandRunner = (cmd, args, { cwd, timeoutMs = 10 * 60_000, interactive = false, env }) =>
   new Promise((resolve) => {
     const child = spawn(cmd, args, {
       cwd,
       timeout: interactive ? undefined : timeoutMs,
-      env: process.env,
+      env: { ...process.env, ...env },
       stdio: interactive ? "inherit" : "pipe",
     });
     let stdout = "";
