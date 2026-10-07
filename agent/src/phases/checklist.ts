@@ -7,6 +7,7 @@ import { runChecks } from "../tools/checks.ts";
 import { runCommand, type CommandRunner } from "../tools/exec.ts";
 import { shopifyCli } from "../tools/shopify-cli.ts";
 import { BUILDER_ALLOWED, BUILDER_DENIED, BUILDER_TOOLS, FIX_ROUNDS } from "./build.ts";
+import { POLARIS_RULE } from "../tools/polaris-check.ts";
 import type { Phase } from "./types.ts";
 
 // Shopify's own list of App Store requirements that can be checked against a local codebase.
@@ -38,6 +39,7 @@ For each requirement in the requirements file:
 
 Rules:
 - Make \`npm run typecheck\`, \`npm run lint\`, \`npm test\` and \`shopify app build\` keep passing.
+- When you change admin UI: ${POLARIS_RULE}
 - Never read, print or edit .env files or secrets. Never deploy, release or push.
 - Keep each note short and specific.`;
 

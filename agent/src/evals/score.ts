@@ -55,6 +55,11 @@ export function scoreArchitecture(app: EvalApp, spec: AppSpec, architecture: str
     { name: "requests no forbidden scope", passed: forbidden.length === 0, detail: `requested ${forbidden.join(", ")}` },
     { name: "includes the compliance webhooks", passed: missingTopics.length === 0, detail: `missing ${missingTopics.join(", ")}` },
     { name: "covers every plan the user named", passed: missingPlans.length === 0, detail: `missing ${missingPlans.join(", ")}` },
+    {
+      name: "designs admin screens with Polaris web components only",
+      passed: /<s-[a-z]/.test(architecture) && !/@shopify\/polaris(?![-\w])/.test(architecture),
+      detail: /<s-[a-z]/.test(architecture) ? "mentions Polaris React (@shopify/polaris)" : "names no Polaris web components (<s-…>)",
+    },
     ...mentions.map((m) => ({
       name: `mentions ${m.label}`,
       passed: new RegExp(m.pattern, "i").test(architecture),

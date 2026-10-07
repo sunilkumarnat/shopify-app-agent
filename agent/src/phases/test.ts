@@ -8,6 +8,7 @@ import { runChecks } from "../tools/checks.ts";
 import { runCommand, type CommandRunner } from "../tools/exec.ts";
 import { resultsByFunctionality, type FunctionalityResult, type PwReport } from "../tools/playwright-report.ts";
 import { FIX_ROUNDS } from "./build.ts";
+import { POLARIS_RULE } from "../tools/polaris-check.ts";
 import type { Phase } from "./types.ts";
 
 const TESTER_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash"];
@@ -39,6 +40,7 @@ Rules:
 - Storefront features: open the store's pages in the browser and assert what shoppers see, including that the theme app block renders. If the storefront is password protected, enter the password from the SHOPIFY_STOREFRONT_PASSWORD environment variable; never hardcode or print it.
 - The embedded admin needs a Shopify login that a headless browser does not have. Test admin features by calling the app's own route loaders, actions and helpers directly from Playwright tests, mocking only the Admin GraphQL client.
 - Never skip, disable or weaken a test to make it pass. When a test fails because the app is wrong, fix the app; when the test itself is wrong, fix the test.
+- When you change admin UI: ${POLARIS_RULE}
 - Never read, print or edit .env files or secrets. Never deploy, release or push.
 - Finish with a short summary of what each test proves.`;
 

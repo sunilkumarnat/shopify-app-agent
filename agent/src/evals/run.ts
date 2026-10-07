@@ -8,6 +8,7 @@ import { RunStore, type RunState } from "../state/run-store.ts";
 import { AppSpecSchema } from "../state/spec.ts";
 import { findAppRoot } from "../tools/app-root.ts";
 import type { CommandRunner } from "../tools/exec.ts";
+import { checkPolarisOnly } from "../tools/polaris-check.ts";
 import type { EvalApp } from "./eval-app.ts";
 import { gradeCriteria, scoreAppConfig, scoreArchitecture, type CheckScore } from "./score.ts";
 
@@ -93,7 +94,11 @@ export async function runEval(app: EvalApp, appDir: string, depth: EvalDepth, de
   if (depth === "build") {
     checks.push({ name: "app builds with every check green", passed: state.status === "done", detail: state.lastError });
     const appRoot = await findAppRoot(appDir);
-    if (appRoot) checks.push(...scoreAppConfig(app, await readFile(join(appRoot, "shopify.app.toml"), "utf8")));
+    if (appRoot) {
+      checks.push(...scoreAppConfig(app, await readFile(join(appRoot, "shopify.app.toml"), "utf8")));
+      const polaris = await checkPolarisOnly(appRoot);
+      checks.push({ name: "admin UI uses only Polaris web components", passed: polaris.passed, detail: polaris.output });
+    }
   }
   return result(checks, graded.costUsd, state.status === "failed" && depth === "architecture" ? state.lastError : undefined);
 }

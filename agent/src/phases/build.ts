@@ -4,6 +4,7 @@ import type { ClaudeRunner } from "../claude.ts";
 import { findAppRoot } from "../tools/app-root.ts";
 import { runChecks, type CheckResult } from "../tools/checks.ts";
 import type { CommandRunner } from "../tools/exec.ts";
+import { POLARIS_RULE } from "../tools/polaris-check.ts";
 import type { Phase } from "./types.ts";
 
 export const FIX_ROUNDS = 3;
@@ -34,7 +35,7 @@ const SYSTEM_PROMPT = `You are building a Shopify app inside a project scaffolde
 
 Rules:
 - Follow the template's conventions: routes under app/routes, authenticate admin requests with the template's shopify.server helpers, keep Prisma models in prisma/schema.prisma with a migration.
-- Admin UI uses Polaris web components with loading, empty and error states. Storefront features go in the theme app extension under extensions/ as app blocks or app embeds.
+- ${POLARIS_RULE} Every admin screen has loading, empty and error states. Storefront features go in the theme app extension under extensions/ as app blocks or app embeds.
 - Use Admin GraphQL only, never REST. Handle pagination and userErrors.
 - Declare access scopes and webhook subscriptions (including the compliance webhooks) in shopify.app.toml. Request only the scopes in the architecture.
 - For paid plans, implement the plans exactly as the architecture describes and gate each feature on the active plan.

@@ -14,6 +14,7 @@ const APPS_DIR = resolve(import.meta.dirname, "../../evals/apps");
 
 const GOOD_ARCHITECTURE = [
   ...ARCHITECTURE_SECTIONS.map((s) => `## ${s}\n\nDetails.`),
+  "Products screen: <s-page>, <s-table>, <s-number-field>.",
   "Free and Pro plans. Threshold in a product metafield, rendered by the app block in blocks/badge.liquid.",
   "Webhooks: customers/data_request, customers/redact, shop/redact.",
 ].join("\n\n");
@@ -53,7 +54,7 @@ describe("scoring an architecture", () => {
   });
 
   it("names what is missing", async () => {
-    const architecture = GOOD_ARCHITECTURE.replace("## Webhooks", "## Hooks").replace("shop/redact", "");
+    const architecture = GOOD_ARCHITECTURE.replace("## Webhooks", "## Hooks").replace("shop/redact", "").replace("<s-page>", "Page from @shopify/polaris");
     const checks = scoreArchitecture(await stockSignal(), spec({ scopes: ["read_orders"], surfaces: ["embedded-admin"] }), architecture);
     expect(checks.filter((c) => !c.passed).map((c) => `${c.name}: ${c.detail}`)).toEqual([
       "architecture has every section in order: missing or out of order: Webhooks",
@@ -61,6 +62,7 @@ describe("scoring an architecture", () => {
       "requests every required scope: missing read_products",
       "requests no forbidden scope: requested read_orders",
       "includes the compliance webhooks: missing shop/redact",
+      "designs admin screens with Polaris web components only: mentions Polaris React (@shopify/polaris)",
     ]);
   });
 
@@ -89,8 +91,8 @@ describe("running an eval", () => {
     expect(requests.map((r) => r.role)).toEqual(["architect", "grader"]);
     expect(requests[1]!.prompt).toContain("1. The badge shows only when");
     expect(result).toMatchObject({ app: "stock-signal", score: 1, passed: true, costUsd: 1.5 });
-    expect(result.checks).toHaveLength(13);
-    expect(evalReport([result])).toContain("| stock-signal | architecture | 100% | 13/13 | $1.50 | Pass |");
+    expect(result.checks).toHaveLength(14);
+    expect(evalReport([result])).toContain("| stock-signal | architecture | 100% | 14/14 | $1.50 | Pass |");
   });
 
   it("fails an app whose architecture scores below its minimum", async () => {

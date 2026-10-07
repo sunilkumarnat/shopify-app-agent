@@ -37,7 +37,7 @@
       "customers/data_request returns the shopper emails the app stores.",
       "The storefront form is protected against spam or abuse (for example rate limiting or a honeypot).",
       "The Starter plan's 50-emails-a-month limit is counted and enforced on the server.",
-      "It names how emails are sent (an email provider) and keeps provider credentials in environment variables."
+      "Emails go through a transactional email provider (named, or left as an open question for the merchant) with its credentials in environment variables."
     ]
   },
   "minScore": 0.8

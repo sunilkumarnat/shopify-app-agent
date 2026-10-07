@@ -64,7 +64,7 @@ Each tool is a typed function the agents call, not free-form shell, so outputs a
 - `shopify_cli(args)`: allowlisted subcommands (`app init`, `app generate extension`, `app build`, `app dev`, `app info`, `app function`, `theme check`). `app deploy` and `app release` exist but refuse to run without the user's deploy confirmation.
 - `graphql_validate(query, apiVersion)`: validates against the Admin schema via the Shopify Dev MCP server; returns field-level errors.
 - `shopify_docs_search(q)`: Shopify Dev MCP docs search, used before writing any unfamiliar API.
-- `run_checks()`: `tsc --noEmit`, eslint, vitest, `shopify app build`, Theme Check. Returns a structured pass/fail list.
+- `run_checks()`: `tsc --noEmit`, eslint, vitest, `shopify app build`, and the Polaris web components check. Returns a structured pass/fail list.
 - `preview(url, steps)`: Playwright against the running `shopify app dev` tunnel; returns screenshots for the reviewer and for the human.
 - `git_commit(msg)`: one commit per completed phase step, so every run is reviewable and revertible.
 
@@ -73,7 +73,7 @@ Each tool is a typed function the agents call, not free-form shell, so outputs a
 Fixed defaults so the agent works from one well-trodden path:
 
 - **Template:** Shopify CLI's React Router app template (TypeScript), embedded, with App Bridge.
-- **Admin UI:** Polaris web components for App Home.
+- **Admin UI:** only Polaris web components (`<s-page>`, `<s-button>`, …), as Sunil set on 2026-10-07. No Polaris React, other UI kits, custom admin CSS or raw HTML controls; `run_checks()` includes a check that enforces this on the app's admin routes and components. The storefront (theme app extension) is not admin UI and matches the merchant's theme.
 - **API:** Admin GraphQL only (no REST), pinned to one stable quarterly version per app, bumped deliberately.
 - **Data:** Prisma with SQLite locally and Postgres in production; app-owned metafields and metaobjects where merchant data belongs on the shop.
 - **Storefront:** theme app extension (app blocks and app embeds, Liquid plus small vanilla JS/CSS assets).
