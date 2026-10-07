@@ -5,6 +5,7 @@ import { z } from "zod";
 import { outputSchemaOf, type ClaudeRunner } from "../claude.ts";
 import type { RunState } from "../state/run-store.ts";
 import { AppSpecSchema, SurfaceSchema, type AppSpec } from "../state/spec.ts";
+import { POLARIS_RULE } from "../tools/polaris-check.ts";
 import type { Phase } from "./types.ts";
 
 export const splitList = (text: string): string[] =>
@@ -60,7 +61,7 @@ Rules:
 - Request the minimum access scopes. Prefer app-owned metafields and metaobjects for data that belongs on the shop.
 - Include the mandatory compliance webhooks (customers/data_request, customers/redact, shop/redact) and every other webhook the flow needs, declared in shopify.app.toml.
 - For paid plans, use Shopify's managed App Pricing when the plans fit it, and say how each plan's features are enforced in the app (which screens or limits check the active plan). For a free app, say so and skip billing.
-- Design loading, empty and error states for every admin screen.
+- Design loading, empty and error states for every admin screen, and name the Polaris web components each screen uses. ${POLARIS_RULE}
 - Do not invent requirements the user didn't give. List anything ambiguous under "Open questions" instead.
 
 The architectureMarkdown must have these sections, in order: ${ARCHITECTURE_SECTIONS.join("; ")}. In Functionalities, map each functionality to where it is built.`;

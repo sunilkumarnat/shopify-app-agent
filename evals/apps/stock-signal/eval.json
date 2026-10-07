@@ -38,10 +38,10 @@
       }
     ],
     "criteria": [
-      "The badge shows only when the product's stock is below its threshold, and not when stock is zero or not tracked.",
+      "The badge shows only when tracked stock is above zero and within the product's threshold, and never when stock is zero or not tracked.",
       "The Free plan's 5-product limit is enforced on the server, not only in the UI.",
-      "Custom badge text is available only on Pro, and the app says what happens to it when a shop downgrades.",
-      "The badge's colour or text can be adjusted in the theme editor.",
+      "Custom badge text is available only on Pro, and the architecture defines what happens to it when a shop downgrades.",
+      "The badge inherits the theme's fonts and colours instead of hard-coding its own styling.",
       "Every admin screen has loading, empty and error states."
     ]
   },
