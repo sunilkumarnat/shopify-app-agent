@@ -2,7 +2,30 @@
 
 An AI agent that designs and develops Shopify apps (embedded admin apps and theme app extensions), from the first question to a deployed app with App Store listing suggestions. The full design is in [`docs/design.md`](docs/design.md).
 
-> **Status: M3.** Every step of the process is implemented: questions, architecture, scaffold and build, the Shopify App Store checklist, testing on your development store, deploying to your host after you confirm, and an App Store listing draft.
+> **Status: all milestones (M0 to M4) are done.** Every step of the process is implemented:
+> - questions and architecture
+> - scaffold and build
+> - the Shopify App Store checklist
+> - testing on your development store
+> - deploying to your host after you confirm
+> - an App Store listing draft
+>
+> Evals score the agent on four sample apps. The architecture and listing steps have been run for real. The steps that need a Shopify login have so far only been run in unit tests, so expect small fixes on your first full run.
+
+## What the agent builds
+
+Every generated app follows the same stack:
+
+- **App:** Shopify CLI's React Router template (TypeScript), embedded in the Shopify admin with App Bridge, created as in Shopify's [scaffold guide](https://shopify.dev/docs/apps/build/scaffold-app).
+- **Admin UI: only Polaris web components** (`<s-page>`, `<s-section>`, `<s-button>`, `<s-text-field>`, `<s-table>`, …).
+  - Not allowed: Polaris React (`@shopify/polaris`), other UI kits or CSS frameworks, custom admin CSS, and raw HTML buttons, inputs, selects, tables, headings or lists.
+  - Every build runs a check that fails on any of these and names the file and line. Claude fixes it like any other failing check.
+- **Storefront:** a theme app extension (app blocks and app embeds) that matches the merchant's theme. Polaris doesn't apply there.
+- **Data and APIs:** Admin GraphQL only (never REST), Prisma for the app's own data, and app-owned metafields and metaobjects for data that belongs on the shop.
+- **Webhooks and scopes:** declared in `shopify.app.toml`, with the mandatory compliance webhooks and the minimum access scopes.
+- **Paid plans:** Shopify's managed App Pricing, with each plan's limits enforced in the app.
+
+Claude (`claude-opus-5-5`, through the Claude Agent SDK) does the designing, building, testing, reviewing and writing. The agent stops for your confirmation before development starts and before anything is deployed.
 
 ## Requirements
 
@@ -14,7 +37,7 @@ What you need depends on how far you want a run to go.
 | **npm 10 or newer** (ships with Node 22) | Installing dependencies | `npm -v` |
 | **Git** | Cloning the repo | `git --version` |
 | **A terminal** | Answering the agent's questions, and logging in to Shopify when the app is created | — |
-| **Anthropic API key** | Claude writing the architecture and building the app | [console.anthropic.com](https://console.anthropic.com) → API keys |
+| **Anthropic API key** | Every step that uses Claude; the agent can't run without it | See [Get an Anthropic API key](#get-an-anthropic-api-key) |
 | **Shopify CLI (latest)** | Creating and building the app | `shopify version` · install with `npm install -g @shopify/cli@latest` |
 | **Shopify developer account** with app development permissions | Creating the app in the Dev Dashboard | [dev.shopify.com](https://dev.shopify.com) |
 | **A Shopify development store** | Installing and testing the app | Create one with `shopify store create dev` |
@@ -25,6 +48,15 @@ What you need depends on how far you want a run to go.
 These follow Shopify's [scaffold guide](https://shopify.dev/docs/apps/build/scaffold-app).
 
 macOS, Linux and Windows (WSL recommended) all work.
+
+### Get an Anthropic API key
+
+1. Sign in or create an account at [console.anthropic.com](https://console.anthropic.com).
+2. Add billing under **Settings > Billing**. API usage is billed separately from a Claude.ai subscription.
+3. Go to **Settings > API keys** and click **Create Key**. Copy it straight away, because it is shown only once.
+4. Put it in `.env` as `ANTHROPIC_API_KEY=...` (see below). Never paste it into chat, an answer to the agent, or a commit.
+
+Each Claude step is capped at `AGENT_MAX_BUDGET_USD`, $10 by default. Writing an architecture typically costs about $0.50.
 
 ## Set up on your machine
 
@@ -46,6 +78,14 @@ npm test
 ```
 
 `.env` is read automatically from the folder you run the agent in. It is git-ignored: keep keys and tokens there, and never type them into an answer.
+
+| Setting in `.env` | Required | What it does |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Yes | Lets the agent use Claude |
+| `AGENT_MAX_BUDGET_USD` | No | Most Claude may spend on one step, in US dollars (default 10) |
+| `AGENT_WORKSPACE` | No | Where generated apps are written (default `./workspace`) |
+| `SHOPIFY_STOREFRONT_PASSWORD` | No | Your dev store's storefront password, if it has one; used only by the storefront tests |
+| `EVAL_DEV_STORE` | No | Development store used by `npm run evals -- --depth build` |
 
 ## Run the agent
 
@@ -114,6 +154,7 @@ workspace/<app-id>/
 | `Shopify CLI is not installed` | Run `npm install -g @shopify/cli@latest`, then `resume`. |
 | `Creating the app needs you to log in to Shopify` | The scaffold step was run without a terminal. Run `resume` in a normal terminal. |
 | `checks still failing after 3 fix rounds` | Open the app folder, look at the failing check in `.agent/run-log.jsonl`, fix it or ask Claude, then `resume`. |
+| `polaris web components only` keeps failing | The admin code still uses something other than Polaris web components. The check output lists each file and line (for example a raw `<button>` or an `@shopify/polaris` import). Replace each one with the matching `<s-…>` component, then `resume`. |
 | `functionalities F2, ... still failing after 3 fix rounds` | Open `test-report.md` to see which tests fail and why. Check `shopify app dev` is still running and the app block is on the product page, then `resume`. |
 | Storefront tests stop at a password page | Put the store's storefront password in `.env` as `SHOPIFY_STOREFRONT_PASSWORD`, then `resume`. |
 | `Could not fetch Shopify's App Store requirements` | Update Shopify CLI with `npm install -g @shopify/cli@latest`, then `resume`. |
@@ -130,7 +171,7 @@ workspace/<app-id>/
 | `agent/src/orchestrator.ts` | Runs the steps in order: questions, confirmations, retries, resume |
 | `agent/src/phases/` | One module per step: questions, plans, architecture, scaffold, build, checklist, test, deploy and listing |
 | `agent/src/claude.ts` | Runs Claude through the Claude Agent SDK with a budget and a tool allowlist |
-| `agent/src/tools/` | Shopify CLI wrapper (allowlist, deploy needs confirmation), check runner, command runner, Playwright report reader |
+| `agent/src/tools/` | Shopify CLI wrapper (allowlist, deploy needs confirmation), check runner, Polaris web components check, command runner, Playwright report reader |
 | `agent/src/state/` | App spec schema and saved run state |
 | `agent/src/models.ts` | Which Claude model each agent role uses |
 | `agent/src/evals/` | Eval runner: plays the user for each sample app, scores the result, writes the report |
@@ -164,9 +205,17 @@ The agent plays the user, answering each question from `eval.json` and giving ev
 - the required scopes are requested and the forbidden ones are not
 - the compliance webhooks are included
 - every plan the user named is covered
+- admin screens are designed with Polaris web components only
 - the architecture mentions the expected patterns
 - a grader model judges each acceptance criterion
 
-An app passes at 80% by default (`minScore`). The report is written to `evals/results/` and the generated apps to `workspace/evals/`. With `--depth build` it also checks that the build is green and that `shopify.app.toml` has the right scopes and compliance webhooks. Set `EVAL_DEV_STORE` in `.env` to choose the store used for build evals.
+An app passes at 80% by default (`minScore`). The report is written to `evals/results/` and the generated apps to `workspace/evals/`. With `--depth build` it also checks three things: that the build is green, that `shopify.app.toml` has the right scopes and compliance webhooks, and that the admin code uses only Polaris web components. Set `EVAL_DEV_STORE` in `.env` to choose the store used for build evals.
 
-The Evals workflow runs the architecture evals on every pull request that changes `agent/src/` or `evals/apps/`, and shows the report in the run summary. It needs an `ANTHROPIC_API_KEY` repository secret (Settings > Secrets and variables > Actions) and skips itself without one.
+The Evals workflow runs the architecture evals on every pull request that changes `agent/src/` or `evals/apps/`, and shows the report in the run summary. It needs an `ANTHROPIC_API_KEY` repository secret and skips itself without one. To add the secret, go to the repo's **Settings > Secrets and variables > Actions > New repository secret**. A run costs about $2.
+
+## What the agent never does
+
+- It never reads, prints or edits `.env` or other secrets, and it never asks you to type a password, token or key into an answer.
+- It never deploys, releases or pushes without your `deploy` confirmation. `shopify app deploy` and `shopify app release` refuse to run until you give it.
+- It only runs commands on an allowlist. A deploy plan may use only your host's own command-line tool, and you review the plan before confirming.
+- It works on your development store only until you confirm the deploy.
