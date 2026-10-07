@@ -9,6 +9,9 @@ export const AppSpecSchema = z.object({
   functionalities: z.array(z.string().min(1)).min(1),
   flow: z.string().min(1),
   surfaces: z.array(SurfaceSchema).min(1),
+  // One entry per paid plan (name, price, interval, trial, features); empty for a free app.
+  plans: z.array(z.string().min(1)).default([]),
+  scopes: z.array(z.string()).default([]),
 });
 
 export type AppSpec = z.infer<typeof AppSpecSchema>;

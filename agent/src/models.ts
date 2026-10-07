@@ -1,11 +1,7 @@
-// Which Claude model each agent role uses (see docs/design.md, section 3).
+// Claude model and effort for each agent role (see docs/design.md, section 3).
 export const MODELS = {
-  orchestrator: "claude-opus-5-5",
-  productUx: "claude-opus-5-5",
-  builder: "claude-sonnet-5-5",
-  reviewer: "claude-opus-5-5",
-  fixer: "claude-sonnet-5-5",
-  classifier: "claude-haiku-4-5",
+  architect: { model: "claude-opus-5-5", effort: "high" },
+  builder: { model: "claude-opus-5-5", effort: "high" },
 } as const;
 
 export type AgentRole = keyof typeof MODELS;

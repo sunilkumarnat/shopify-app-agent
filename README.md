@@ -2,7 +2,7 @@
 
 An AI agent that designs and develops Shopify apps (embedded admin apps and theme app extensions), from the first question to a deployed app with App Store listing suggestions. The full design is in [`docs/design.md`](docs/design.md).
 
-> **Status: M0.** Every question and confirmation in the process works and is saved, and the agent writes `spec.json` and an outline `architecture.md` from your answers. Building, the Shopify checklist, testing, deploying and listing suggestions are still placeholders, and nothing calls Claude or Shopify yet. Those arrive in M1 to M3.
+> **Status: M1.** The agent asks every question, has Claude write the architecture, creates the app with Shopify CLI, and has Claude build it until typecheck, lint, tests and `shopify app build` pass. The Shopify checklist, testing on your store, deploying and listing suggestions are still placeholders until M2 and M3.
 
 ## Requirements
 
@@ -10,15 +10,18 @@ What you need depends on how far you want a run to go.
 
 | Requirement | Needed for | How to check |
 |---|---|---|
-| **Node.js 22 or newer** | Running the agent (now) | `node -v` |
-| **npm 10 or newer** (ships with Node 22) | Installing dependencies (now) | `npm -v` |
-| **Git** | Cloning the repo (now) | `git --version` |
-| **A terminal** | Answering the agent's questions interactively (now) | — |
-| **Anthropic API key** | Claude writing the architecture and code (from M1) | [console.anthropic.com](https://console.anthropic.com) → API keys |
-| **Shopify CLI** | Scaffolding, building and running apps (from M1) | `shopify version` · install with `npm install -g @shopify/cli` |
-| **Shopify Partner account** | Creating and linking the app (from M1) | [partners.shopify.com](https://partners.shopify.com) |
-| **A Shopify development store** | Installing and testing the app (from M2) | Create one in the Partner Dashboard → Stores |
+| **Node.js 22 or newer** | Running the agent | `node -v` |
+| **npm 10 or newer** (ships with Node 22) | Installing dependencies | `npm -v` |
+| **Git** | Cloning the repo | `git --version` |
+| **A terminal** | Answering the agent's questions, and logging in to Shopify when the app is created | — |
+| **Anthropic API key** | Claude writing the architecture and building the app | [console.anthropic.com](https://console.anthropic.com) → API keys |
+| **Shopify CLI (latest)** | Creating and building the app | `shopify version` · install with `npm install -g @shopify/cli@latest` |
+| **Shopify developer account** with app development permissions | Creating the app in the Dev Dashboard | [dev.shopify.com](https://dev.shopify.com) |
+| **A Shopify development store** | Installing and testing the app (from M2) | Create one with `shopify store create dev` |
+| **Latest Chrome or Firefox** | Previewing the app on your store (from M2) | — |
 | **Your hosting provider's CLI and account** (for example `flyctl` for Fly.io) | The deploy step (from M3) | Depends on the host you name when the agent asks |
+
+These follow Shopify's [scaffold guide](https://shopify.dev/docs/apps/build/scaffold-app).
 
 macOS, Linux and Windows (WSL recommended) all work.
 
@@ -34,14 +37,12 @@ npm install
 
 # 3. Create your local settings file
 cp .env.example .env
-#    then open .env and fill in what you have; everything is optional for M0
+#    then open .env and set ANTHROPIC_API_KEY
 
 # 4. Check everything works
 npm run typecheck
 npm test
 ```
-
-From M1, also sign in to Shopify once with `shopify auth login`, or put a `SHOPIFY_CLI_PARTNERS_TOKEN` in `.env` instead.
 
 `.env` is read automatically from the folder you run the agent in. It is git-ignored: keep keys and tokens there, and never type them into an answer.
 
@@ -58,15 +59,16 @@ The agent then asks you everything in the terminal. You can stop with `Ctrl+C` a
 ### What it asks, in order
 
 1. The app's name and description
-2. The app's functionalities (one per line, or separated by semicolons)
+2. The app's functionalities, separated by semicolons
 3. The app's basic flow
-4. Review `architecture.md`: type `yes` to confirm, or describe the changes you want and it rewrites the file and asks again
-5. Whether you have a Shopify Partner account and which development store to use, then confirmation to start development
-6. Scaffolds and builds the app *(M1)*
-7. Checks it against Shopify's App Store requirements and Built for Shopify recommendations *(M3)*
-8. Tests every functionality on your development store *(M2)*
-9. Where to host the app, then confirmation to deploy *(deploy itself in M3)*
-10. Suggests App Store listing details *(M3)*
+4. Whether the app has paid plans and, if it does, each plan's name, price, billing interval, trial and features
+5. Review `architecture.md`: type `yes` to confirm, or describe the changes you want and it rewrites the file and asks again
+6. Whether you have a Shopify developer account and which development store to use, then confirmation to start development
+7. Creates the app with `shopify app init` (you log in and choose your organization in the terminal), adds the theme app extension, then Claude builds it and fixes anything that fails the checks
+8. Checks it against Shopify's App Store requirements and Built for Shopify recommendations *(M3)*
+9. Tests every functionality on your development store *(M2)*
+10. Where to host the app, then confirmation to deploy *(deploy itself in M3)*
+11. Suggests App Store listing details *(M3)*
 
 ### All commands
 
@@ -86,7 +88,8 @@ The last three are for scripts and other non-interactive use. In a normal termin
 ```
 workspace/<app-id>/
 ├── spec.json            # your answers as a structured spec
-├── architecture.md      # the architecture you review at step 4
+├── architecture.md      # the architecture Claude writes and you review at step 5
+├── <app-name>/          # the Shopify app itself, created by shopify app init
 └── .agent/
     ├── state.json       # current step, answers and confirmations (lets a run resume)
     └── run-log.jsonl    # everything the agent did, one event per line
@@ -101,6 +104,10 @@ workspace/<app-id>/
 | `process.loadEnvFile is not a function` or syntax errors on start | Your Node is older than 22. Upgrade it and run `npm install` again. |
 | The agent prints a status line and exits instead of asking | It isn't attached to a terminal (for example, piped or run from a script). Use `answer`, `approve` and `changes`, or run it in a normal terminal. |
 | `No app run found in ...` | No run exists with that `<app-id>` (or `AGENT_WORKSPACE` points elsewhere). Check the name, or start one with `new`. |
+| `Claude could not write the architecture` / `could not build the app` | Check `ANTHROPIC_API_KEY` in `.env`. If the message mentions the budget, raise `AGENT_MAX_BUDGET_USD`. Then run `resume`. |
+| `Shopify CLI is not installed` | Run `npm install -g @shopify/cli@latest`, then `resume`. |
+| `Creating the app needs you to log in to Shopify` | The scaffold step was run without a terminal. Run `resume` in a normal terminal. |
+| `checks still failing after 3 fix rounds` | Open the app folder, look at the failing check in `.agent/run-log.jsonl`, fix it or ask Claude, then `resume`. |
 | `No question is waiting for an answer` | The run is waiting for a confirmation, not an answer. Run `status` to see what it needs. |
 
 ## Repository layout
@@ -109,7 +116,8 @@ workspace/<app-id>/
 |---|---|
 | `agent/src/cli.ts` | Command-line entry point and interactive prompts |
 | `agent/src/orchestrator.ts` | Runs the steps in order: questions, confirmations, retries, resume |
-| `agent/src/phases/` | One module per step: questions and architecture are real, the rest are placeholders |
+| `agent/src/phases/` | One module per step: questions, plans, architecture, scaffold and build are real; the rest are placeholders |
+| `agent/src/claude.ts` | Runs Claude through the Claude Agent SDK with a budget and a tool allowlist |
 | `agent/src/tools/` | Shopify CLI wrapper (allowlist, deploy needs confirmation), check runner, command runner |
 | `agent/src/state/` | App spec schema and saved run state |
 | `agent/src/models.ts` | Which Claude model each agent role uses |

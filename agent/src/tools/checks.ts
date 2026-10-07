@@ -14,7 +14,7 @@ export interface CheckResult {
 
 // Machine checks every build step must pass (docs/design.md, section 3).
 export const DEFAULT_CHECKS: Check[] = [
-  { name: "typecheck", cmd: "npx", args: ["tsc", "--noEmit"] },
+  { name: "typecheck", cmd: "npm", args: ["run", "typecheck", "--if-present"] },
   { name: "lint", cmd: "npm", args: ["run", "lint", "--if-present"] },
   { name: "test", cmd: "npm", args: ["test", "--if-present"] },
   { name: "shopify app build", cmd: "shopify", args: ["app", "build"] },

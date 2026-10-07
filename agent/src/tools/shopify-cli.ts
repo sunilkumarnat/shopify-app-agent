@@ -3,6 +3,7 @@ import { runCommand, type CommandResult, type CommandRunner } from "./exec.ts";
 
 // Subcommands the agent may run freely, matched as a prefix of the arguments.
 const ALLOWED: string[][] = [
+  ["version"],
   ["app", "init"],
   ["app", "generate", "extension"],
   ["app", "build"],
@@ -32,8 +33,8 @@ export function checkShopifyArgs(args: string[], approvals: readonly GateName[])
 
 export async function shopifyCli(
   args: string[],
-  opts: { cwd: string; approvals: readonly GateName[]; runner?: CommandRunner },
+  opts: { cwd: string; approvals: readonly GateName[]; interactive?: boolean; runner?: CommandRunner },
 ): Promise<CommandResult> {
   checkShopifyArgs(args, opts.approvals);
-  return (opts.runner ?? runCommand)("shopify", args, { cwd: opts.cwd });
+  return (opts.runner ?? runCommand)("shopify", args, { cwd: opts.cwd, interactive: opts.interactive });
 }

@@ -50,7 +50,7 @@ async function runWithRetries(store: RunStore, phase: Phase, state: RunState) {
     if (result.kind === "done") await store.log("phase.done", { phase: phase.name, summary: result.summary });
     if (result.kind !== "failed") return result;
     await store.log("phase.failed", { phase: phase.name, attempt, error: result.error });
-    if (attempt >= MAX_ATTEMPTS) return result;
+    if (attempt >= (phase.maxAttempts ?? MAX_ATTEMPTS)) return result;
   }
 }
 
