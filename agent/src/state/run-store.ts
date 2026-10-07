@@ -49,7 +49,10 @@ export class RunStore {
   }
 
   async load(): Promise<RunState> {
-    const raw = await readFile(join(this.agentDir, "state.json"), "utf8");
+    const raw = await readFile(join(this.agentDir, "state.json"), "utf8").catch((err: NodeJS.ErrnoException) => {
+      if (err.code === "ENOENT") throw new Error(`No app run found in ${this.appDir}. Start one with \`new\`.`);
+      throw err;
+    });
     return RunStateSchema.parse(JSON.parse(raw));
   }
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env -S npx tsx
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -22,7 +23,11 @@ const GATE_PROMPTS: Record<GateName, string> = {
   deploy: "The checklist and tests have passed. Deploy the app? Type 'yes' to confirm",
 };
 
-const workspaceRoot = resolve(process.env.AGENT_WORKSPACE ?? "workspace");
+// npm runs workspace scripts from agent/, so resolve paths from where the user ran the command.
+const invokedFrom = process.env.INIT_CWD ?? process.cwd();
+const envFile = join(invokedFrom, ".env");
+if (existsSync(envFile)) process.loadEnvFile(envFile);
+const workspaceRoot = resolve(invokedFrom, process.env.AGENT_WORKSPACE ?? "workspace");
 const storeFor = (appId: string) => new RunStore(join(workspaceRoot, appId));
 
 function report(state: RunState): void {
