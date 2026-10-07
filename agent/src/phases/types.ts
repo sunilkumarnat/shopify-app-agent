@@ -1,4 +1,4 @@
-import type { GateName, RunState } from "../state/run-store.ts";
+import type { GateName, Question, RunState } from "../state/run-store.ts";
 
 export interface PhaseContext {
   appDir: string;
@@ -6,7 +6,10 @@ export interface PhaseContext {
   log(event: string, data?: Record<string, unknown>): Promise<void>;
 }
 
-export type PhaseResult = { ok: true; summary: string } | { ok: false; error: string };
+export type PhaseResult =
+  | { kind: "done"; summary: string }
+  | { kind: "needs-input"; question: Question }
+  | { kind: "failed"; error: string };
 
 export interface Phase {
   name: string;

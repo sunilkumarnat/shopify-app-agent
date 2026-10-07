@@ -1,50 +1,85 @@
 #!/usr/bin/env -S npx tsx
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { advance, approve } from "./orchestrator.ts";
+import { createInterface } from "node:readline/promises";
+import { advance, answer, approve, requestChanges } from "./orchestrator.ts";
 import { PHASES } from "./phases/index.ts";
-import { GateSchema, RunStore, type RunState } from "./state/run-store.ts";
-import type { AppSpec } from "./state/spec.ts";
+import { GateSchema, RunStore, type GateName, type RunState } from "./state/run-store.ts";
 
 const USAGE = `Usage:
-  shopify-app-agent new <app-name> "<idea>"
-  shopify-app-agent resume <app-name>
-  shopify-app-agent approve <app-name> <${GateSchema.options.join("|")}>
-  shopify-app-agent status <app-name>`;
+  shopify-app-agent new <app-id>                     start a new app and answer the agent's questions
+  shopify-app-agent resume <app-id>                  continue where the run stopped
+  shopify-app-agent answer <app-id> "<answer>"       answer the pending question
+  shopify-app-agent approve <app-id> <${GateSchema.options.join("|")}>
+  shopify-app-agent changes <app-id> "<feedback>"    ask for changes to the architecture
+  shopify-app-agent status <app-id>
+
+In a terminal, new and resume ask questions and approvals interactively.`;
+
+const GATE_PROMPTS: Record<GateName, string> = {
+  architecture: "Review architecture.md. Type 'yes' to confirm it, or describe the changes you want",
+  "start-development": "Start development now? Type 'yes' to confirm",
+  deploy: "The checklist and tests have passed. Deploy the app? Type 'yes' to confirm",
+};
 
 const workspaceRoot = resolve(process.env.AGENT_WORKSPACE ?? "workspace");
-const storeFor = (name: string) => new RunStore(join(workspaceRoot, name));
+const storeFor = (appId: string) => new RunStore(join(workspaceRoot, appId));
 
 function report(state: RunState): void {
   const phase = PHASES[state.phaseIndex]?.name ?? "complete";
-  console.log(`${state.appName}: ${state.status} at ${phase}`);
-  if (state.pendingGate) console.log(`Waiting for approval: run \`approve ${state.appName} ${state.pendingGate}\``);
+  console.log(`${state.appId}: ${state.status} at ${phase}`);
+  if (state.pendingQuestion) console.log(`Question: ${state.pendingQuestion.prompt}`);
+  if (state.pendingGate) console.log(`Waiting for you: ${GATE_PROMPTS[state.pendingGate]}`);
   if (state.lastError) console.log(`Last error: ${state.lastError}`);
 }
 
+// Keeps the run moving, asking each question and approval in the terminal.
+async function interactive(store: RunStore): Promise<RunState> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    let state = await advance(store, PHASES);
+    while (state.status === "awaiting-input" || state.status === "awaiting-approval") {
+      if (state.pendingQuestion) {
+        const reply = await rl.question(`\n${state.pendingQuestion.prompt}\n> `);
+        if (!reply.trim()) continue;
+        await answer(store, reply);
+      } else if (state.pendingGate) {
+        console.log(state.pendingGate === "architecture" ? `\nArchitecture: ${join(store.appDir, "architecture.md")}` : "");
+        const reply = (await rl.question(`${GATE_PROMPTS[state.pendingGate]}\n> `)).trim();
+        if (/^y(es)?$/i.test(reply)) await approve(store, state.pendingGate);
+        else if (state.pendingGate === "architecture" && reply) await requestChanges(store, PHASES, reply);
+        else return state;
+      }
+      state = await advance(store, PHASES);
+    }
+    return state;
+  } finally {
+    rl.close();
+  }
+}
+
+const run = (store: RunStore) => (process.stdin.isTTY ? interactive(store) : advance(store, PHASES));
+
 async function main(argv: string[]): Promise<number> {
-  const [command, name, ...rest] = argv;
-  if (!command || !name) {
+  const [command, appId, ...rest] = argv;
+  if (!command || !appId) {
     console.error(USAGE);
     return 2;
   }
-  const store = storeFor(name);
+  const store = storeFor(appId);
+  const text = rest.join(" ").trim();
 
   switch (command) {
-    case "new": {
-      const idea = rest.join(" ").trim();
-      if (!idea) {
-        console.error(USAGE);
-        return 2;
-      }
+    case "new":
       await mkdir(store.appDir, { recursive: true });
-      const spec: AppSpec = { name, idea, surfaces: ["embedded-admin", "theme-extension"], stories: [], scopes: [], outOfScope: [] };
-      await writeFile(join(store.appDir, "spec.json"), JSON.stringify(spec, null, 2) + "\n");
-      await store.init(name);
-      report(await advance(store, PHASES));
+      await store.init(appId);
+      report(await run(store));
       return 0;
-    }
     case "resume":
+      report(await run(store));
+      return 0;
+    case "answer":
+      await answer(store, text);
       report(await advance(store, PHASES));
       return 0;
     case "approve": {
@@ -57,6 +92,10 @@ async function main(argv: string[]): Promise<number> {
       report(await advance(store, PHASES));
       return 0;
     }
+    case "changes":
+      await requestChanges(store, PHASES, text);
+      report(await advance(store, PHASES));
+      return 0;
     case "status":
       report(await store.load());
       return 0;
@@ -66,4 +105,9 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
-process.exitCode = await main(process.argv.slice(2));
+try {
+  process.exitCode = await main(process.argv.slice(2));
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
+  process.exitCode = 1;
+}

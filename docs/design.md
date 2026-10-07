@@ -4,7 +4,7 @@ _Status: v1, decisions confirmed by Sunil · 2026-10-07 · Owner: Sunil_
 
 ## 1. Goal
 
-An AI agent that takes a merchant-facing app idea and carries it to a deployed Shopify app: spec, UI design, code, tests, dev-store preview, and release. It must handle both surfaces Shopify offers:
+An AI agent that takes a merchant-facing app idea and carries it to a deployed Shopify app by following a fixed process (section 5): questions, architecture review, code, Shopify checklist, tests, deploy, and listing suggestions. It must handle both surfaces Shopify offers:
 
 - **Embedded admin apps** (App Home pages inside Shopify admin, backed by Admin GraphQL, webhooks, billing).
 - **Theme app extensions** (app blocks and app embeds that render on the storefront through Liquid).
@@ -16,7 +16,7 @@ Non-goals for v1: Hydrogen storefronts, POS extensions, App Store submission (th
 1. **Use Shopify's own tooling, don't reinvent it.** Shopify CLI scaffolds, runs, builds and deploys. The agent drives the CLI instead of hand-writing config.
 2. **Ground every API call in the live schema.** Generated GraphQL is validated against the pinned Admin API version before it is written to disk, so hallucinated fields fail fast.
 3. **Small verified increments.** Each phase ends with a machine check (typecheck, tests, `shopify app build`, Theme Check, screenshot). The agent never moves on with a red check.
-4. **Humans gate the irreversible steps.** Creating the Partner app, `shopify app deploy`, billing changes and anything touching a live store need explicit approval.
+4. **The user confirms the decisions that matter.** The architecture, the start of development and the deploy each need the user's explicit confirmation; billing changes and anything touching a live store do too.
 5. **One spec is the source of truth.** Every phase reads and updates `spec.md` for the app, so a run can stop and resume.
 
 ## 3. Architecture
@@ -29,9 +29,9 @@ Non-goals for v1: Hydrogen storefronts, POS extensions, App Store submission (th
                    │ delegates                     │ calls
      ┌─────────────┼──────────────┐         ┌──────┴──────────────────────┐
      ▼             ▼              ▼         ▼                             ▼
- Product/UX    Builder        Reviewer   Tool layer                    Human gates
- subagent      subagents      subagent   - Shopify CLI wrapper         (approve spec,
- (spec, Polaris (backend,     (security, - Shopify Dev MCP (docs        deploy, billing)
+ Product/UX    Builder        Reviewer   Tool layer                    User input
+ subagent      subagents      subagent   - Shopify CLI wrapper         (questions,
+ (spec, Polaris (backend,     (security, - Shopify Dev MCP (docs        confirmations)
   screens)      admin UI,      scopes,     search, GraphQL/theme
                 theme ext)     UX, a11y)   validation)
                                          - Theme Check
@@ -47,8 +47,8 @@ Non-goals for v1: Hydrogen storefronts, POS extensions, App Store submission (th
 
 | Component | Responsibility | Model |
 |---|---|---|
-| Orchestrator | Runs the phase state machine, keeps `spec.md` and `run-log.jsonl`, decides retries, asks for human approval | `claude-opus-5-5` |
-| Product/UX agent | Turns an idea into a spec: user stories, screens, data model, scopes, extension points | `claude-opus-5-5` |
+| Orchestrator | Runs the phase state machine, keeps `spec.md` and `run-log.jsonl`, decides retries, asks the user's questions and confirmations | `claude-opus-5-5` |
+| Product/UX agent | Asks the process questions, then turns the answers into the architecture: screens, data model, scopes, extension points | `claude-opus-5-5` |
 | Builder agents | Write code for one slice each: backend routes and data, admin UI, theme extension, webhooks | `claude-sonnet-5-5` |
 | Reviewer agent | Reviews diffs for scope creep, tenant isolation, webhook HMAC, GDPR handlers, Polaris misuse, a11y | `claude-opus-5-5` |
 | Fixer loop | Reads failing check output and patches; capped at N attempts per check before escalating | `claude-sonnet-5-5` |
@@ -60,7 +60,7 @@ All agents share a cached system prompt (Shopify conventions, repo layout, codin
 
 Each tool is a typed function the agents call, not free-form shell, so outputs are parseable and dangerous flags are blocked.
 
-- `shopify_cli(args)`: allowlisted subcommands (`app init`, `app generate extension`, `app build`, `app dev`, `app info`, `app function`, `theme check`). `app deploy` and `app release` exist but require a human-approval token.
+- `shopify_cli(args)`: allowlisted subcommands (`app init`, `app generate extension`, `app build`, `app dev`, `app info`, `app function`, `theme check`). `app deploy` and `app release` exist but refuse to run without the user's deploy confirmation.
 - `graphql_validate(query, apiVersion)`: validates against the Admin schema via the Shopify Dev MCP server; returns field-level errors.
 - `shopify_docs_search(q)`: Shopify Dev MCP docs search, used before writing any unfamiliar API.
 - `run_checks()`: `tsc --noEmit`, eslint, vitest, `shopify app build`, Theme Check. Returns a structured pass/fail list.
@@ -77,22 +77,26 @@ Fixed defaults so the agent works from one well-trodden path:
 - **Data:** Prisma with SQLite locally and Postgres in production; app-owned metafields and metaobjects where merchant data belongs on the shop.
 - **Storefront:** theme app extension (app blocks and app embeds, Liquid plus small vanilla JS/CSS assets).
 - **Webhooks:** declared in `shopify.app.toml` (app-specific subscriptions), including mandatory compliance topics.
-- **Hosting:** Fly.io (app plus Fly Postgres), deployed with `fly deploy` behind the release gate.
+- **Hosting:** Fly.io (app plus Fly Postgres), deployed with `fly deploy` after the user confirms the deploy.
 
-## 5. Workflow: idea to deployed app
+## 5. Workflow: the development process
 
-| # | Phase | Agent does | Exit check | Human gate |
+This is the process Sunil set on 2026-10-07. The agent always follows these steps in this order. Every question and confirmation is asked in the terminal, and a run can stop at any step and resume later.
+
+| # | Step | Agent does | User does | Exit check |
 |---|---|---|---|---|
-| 1 | Intake | Asks at most 3 clarifying questions, writes `spec.md` (stories, screens, data, scopes, extensions, out of scope) | Spec lint: every story maps to a screen or extension; scopes are minimal | **Approve spec** |
-| 2 | Design | Screen-by-screen Polaris layouts incl. empty, loading and error states; storefront block mockups; GraphQL operations list | Each operation validated against the schema | Optional review |
-| 3 | Scaffold | `shopify app init` from the template, `shopify app generate extension` for the theme extension, links to the Partner app | `shopify app build` passes | **Approve linking to Partner app** |
-| 4 | Build | Builders implement slices in parallel on separate files; each slice comes with tests | `run_checks()` green | — |
-| 5 | Review | Reviewer audits the diff; fixer applies findings | No high-severity findings | — |
-| 6 | Preview | `shopify app dev` on a dev store, installs, runs Playwright flows, adds the app block to a theme | Screenshots of every screen and the storefront block | **Approve preview** |
-| 7 | Release | Builds production config, sets env, deploys host, `shopify app deploy` to create a version | Health check on host, version visible in `shopify app info` | **Approve deploy** |
-| 8 | Handoff | Writes README, listing draft, known limits, next steps | — | — |
+| 1 | App details | Asks for the app's name and description | Answers | Both answered |
+| 2 | Functionalities | Asks for the list of functionalities | Answers, one per line | At least one functionality |
+| 3 | Basic flow | Asks for the app's basic flow (merchant from install to daily use, what shoppers see) | Answers | Answered |
+| 4 | Architecture | Analyzes the answers and writes `architecture.md`: screens, data model, Admin GraphQL operations, scopes, webhooks, theme extension blocks | **Reviews and confirms it, or describes changes** (the agent regenerates and asks again) | Spec validates; every functionality maps to a screen or extension |
+| 5 | Start development | Asks for confirmation to start | **Confirms** | Confirmation given |
+| 6 | Scaffold and build | `shopify app init`, extensions, then builders implement each slice with tests; reviewer audits the diff | — | `run_checks()` green |
+| 7 | Shopify checklist | Checks the app against Shopify's App Store requirements and Built for Shopify recommendations (auth, scopes, compliance webhooks, Polaris, performance, a11y) and fixes what fails | — | No blocking items |
+| 8 | Test functionalities | Installs on the dev store, runs a Playwright flow for each functionality, adds the app block to a theme, captures screenshots | — | Every functionality passes |
+| 9 | Deploy | Deploys the host to Fly.io and runs `shopify app deploy` | **Confirms the deploy** | Health check passes, app version created |
+| 10 | Listing suggestions | Drafts App Store listing details: name, tagline, description, feature list, screenshots to take, pricing ideas, support and privacy links | Reviews | — |
 
-Failure handling: each check gets up to 3 fix attempts. After that the orchestrator stops, writes what failed and what it tried into the run log, and asks the human.
+Failure handling: each check gets up to 3 fix attempts. After that the orchestrator stops, writes what failed and what it tried into the run log, and asks the user.
 
 ## 6. Sample test app: **Stock Signal**
 
@@ -109,7 +113,7 @@ Chosen because it is small but touches every surface the agent must master.
 | Webhooks | `inventory_levels/update` to keep a cache warm; compliance webhooks |
 | Scopes | `read_products`, `read_inventory`, `write_products` (metafields) only |
 
-Success criteria for v1 of the agent: from the one-paragraph idea above, it produces a running Stock Signal on a dev store with all checks green and no more than the four human approvals in section 5.
+Success criteria for v1 of the agent: from the one-paragraph idea above, it produces a running Stock Signal on a dev store with all checks green and only the questions and three confirmations in section 5.
 
 Follow-up eval apps once that works: a post-purchase upsell (Checkout UI extension), a volume discount (Shopify Function), a size-chart block (theme extension only).
 
@@ -119,12 +123,12 @@ Follow-up eval apps once that works: a post-purchase upsell (Checkout UI extensi
 shopify-app-agent/
 ├── agent/
 │   ├── src/
-│   │   ├── orchestrator.ts        # phase state machine, approvals, resume
-│   │   ├── phases/                # intake.ts, design.ts, scaffold.ts, build.ts, review.ts, preview.ts, release.ts
+│   │   ├── orchestrator.ts        # phase state machine, questions, confirmations, resume
+│   │   ├── phases/                # questions.ts, architecture.ts, then scaffold, build, checklist, test, deploy, listing
 │   │   ├── agents/                # subagent definitions and prompts
 │   │   ├── tools/                 # shopify-cli.ts, graphql-validate.ts, docs-search.ts, checks.ts, preview.ts, git.ts
 │   │   ├── state/                 # spec schema (zod), run log
-│   │   └── cli.ts                 # `agent new "<idea>"`, `agent resume <app>`, `agent approve <gate>`
+│   │   └── cli.ts                 # `new <app>` (interactive), `resume`, `answer`, `approve`, `changes`, `status`
 │   ├── prompts/                   # shared system prompt, Shopify conventions
 │   └── package.json
 ├── knowledge/                     # curated Shopify patterns: auth, webhooks, billing, Polaris, theme blocks
@@ -144,14 +148,14 @@ The agent is TypeScript to match the Shopify ecosystem (CLI, templates, App Brid
 - Secrets come from env only; the agent never writes tokens into generated code or logs.
 - Scopes are proposed in the spec and any later scope increase needs re-approval.
 - The reviewer has a fixed checklist: session-token auth on every admin route, webhook HMAC verification, shop-scoped DB queries, compliance webhooks, no PII in logs.
-- Dev store only until the release gate; the agent has no credentials for a live store.
+- Dev store only until the user confirms the deploy; the agent has no credentials for a live store.
 
 ## 9. Milestones
 
 1. **M0, skeleton:** repo, orchestrator with phases stubbed, tool wrappers for CLI and checks.
-2. **M1, scaffold and build:** agent scaffolds Stock Signal and gets `run_checks()` green with no preview.
-3. **M2, preview:** dev-store install, Playwright screenshots, theme block visible.
-4. **M3, release:** hosted deploy and `shopify app deploy` behind approval.
+2. **M1, architecture and build:** Claude writes the real architecture from the answers, then scaffolds Stock Signal and gets `run_checks()` green.
+3. **M2, test functionalities:** dev-store install, a Playwright flow per functionality, screenshots, theme block visible.
+4. **M3, checklist, deploy and listing:** Shopify checklist step, hosted deploy and `shopify app deploy` after confirmation, listing suggestions.
 5. **M4, evals:** three more eval apps, scored automatically on every agent change.
 
 ## 10. Decisions (confirmed by Sunil, 2026-10-07)

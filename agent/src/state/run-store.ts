@@ -2,22 +2,29 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 
-export const GATES = ["spec", "partner-link", "preview", "deploy"] as const;
+// Points where the agent stops for the user's decision (docs/design.md, section 5).
+export const GATES = ["architecture", "start-development", "deploy"] as const;
 export const GateSchema = z.enum(GATES);
 export type GateName = z.infer<typeof GateSchema>;
 
+export const QuestionSchema = z.object({ id: z.string(), prompt: z.string() });
+export type Question = z.infer<typeof QuestionSchema>;
+
 export const RunStateSchema = z.object({
-  appName: z.string(),
+  appId: z.string(),
   phaseIndex: z.number().int().min(0),
-  status: z.enum(["running", "awaiting-approval", "failed", "done"]),
+  status: z.enum(["running", "awaiting-input", "awaiting-approval", "failed", "done"]),
+  answers: z.record(z.string(), z.string()),
   approvals: z.array(GateSchema),
+  pendingQuestion: QuestionSchema.optional(),
   pendingGate: GateSchema.optional(),
+  feedback: z.array(z.object({ gate: GateSchema, text: z.string() })),
   lastError: z.string().optional(),
 });
 
 export type RunState = z.infer<typeof RunStateSchema>;
 
-// Persists one app run under <appDir>/.agent so a run can stop at a gate and resume later.
+// Persists one app run under <appDir>/.agent so a run can stop for the user and resume later.
 export class RunStore {
   readonly appDir: string;
   private readonly agentDir: string;
@@ -27,9 +34,16 @@ export class RunStore {
     this.agentDir = join(appDir, ".agent");
   }
 
-  async init(appName: string): Promise<RunState> {
+  async init(appId: string): Promise<RunState> {
     await mkdir(this.agentDir, { recursive: true });
-    const state: RunState = { appName, phaseIndex: 0, status: "running", approvals: [] };
+    const state: RunState = {
+      appId,
+      phaseIndex: 0,
+      status: "running",
+      answers: {},
+      approvals: [],
+      feedback: [],
+    };
     await this.save(state);
     return state;
   }

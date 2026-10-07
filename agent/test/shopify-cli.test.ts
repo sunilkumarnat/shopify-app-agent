@@ -9,7 +9,7 @@ describe("checkShopifyArgs", () => {
 
   it("requires the deploy approval for deploy and release", () => {
     expect(() => checkShopifyArgs(["app", "deploy"], [])).toThrow(/deploy/);
-    expect(() => checkShopifyArgs(["app", "release", "--version", "v1"], ["spec"])).toThrow(/deploy/);
+    expect(() => checkShopifyArgs(["app", "release", "--version", "v1"], ["architecture"])).toThrow(/deploy/);
     expect(() => checkShopifyArgs(["app", "deploy"], ["deploy"])).not.toThrow();
   });
 
