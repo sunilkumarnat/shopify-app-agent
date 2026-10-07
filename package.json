@@ -1,0 +1,9 @@
+{
+  "name": "shopify-app-agent-root",
+  "private": true,
+  "workspaces": ["agent"],
+  "scripts": {
+    "typecheck": "npm run typecheck -w agent",
+    "test": "npm test -w agent"
+  }
+}
