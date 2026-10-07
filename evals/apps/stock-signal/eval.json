@@ -1,0 +1,49 @@
+{
+  "id": "stock-signal",
+  "answers": {
+    "name": "Stock Signal",
+    "description": "Shows an 'Only N left' badge on product pages when stock is low, so shoppers buy before it sells out.",
+    "functionalities": "Pick which products show the badge; Set a low-stock threshold per product; Show an 'Only N left' badge on the product page, styled to match the theme",
+    "flow": "The merchant installs the app, picks products and sets a threshold for each, then adds the badge block to the product page in the theme editor. Shoppers see 'Only N left' when stock is below the threshold.",
+    "hasPlans": "yes",
+    "plans": "Free: $0, up to 5 products; Pro: $9/month, 7-day trial, unlimited products, custom badge text",
+    "developerAccount": "yes",
+    "devStore": "your-dev-store.myshopify.com"
+  },
+  "expect": {
+    "surfaces": [
+      "embedded-admin",
+      "theme-extension"
+    ],
+    "scopes": {
+      "required": [
+        "read_products"
+      ],
+      "forbidden": [
+        "read_orders",
+        "write_orders",
+        "read_customers",
+        "write_customers",
+        "write_inventory"
+      ]
+    },
+    "mentions": [
+      {
+        "label": "a product metafield for the threshold",
+        "pattern": "metafield"
+      },
+      {
+        "label": "the theme app block",
+        "pattern": "app block|blocks/"
+      }
+    ],
+    "criteria": [
+      "The badge shows only when the product's stock is below its threshold, and not when stock is zero or not tracked.",
+      "The Free plan's 5-product limit is enforced on the server, not only in the UI.",
+      "Custom badge text is available only on Pro, and the app says what happens to it when a shop downgrades.",
+      "The badge's colour or text can be adjusted in the theme editor.",
+      "Every admin screen has loading, empty and error states."
+    ]
+  },
+  "minScore": 0.8
+}

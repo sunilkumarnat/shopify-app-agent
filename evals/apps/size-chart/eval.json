@@ -1,0 +1,48 @@
+{
+  "id": "size-chart",
+  "answers": {
+    "name": "Fit Guide",
+    "description": "Lets clothing merchants show size charts on product pages so shoppers pick the right size and return less.",
+    "functionalities": "Create size charts as tables of sizes and measurements; Assign a chart to products, collections or product tags; Show a 'Size chart' link on the product page that opens the chart in a popup; Switch measurements between cm and inches",
+    "flow": "The merchant installs the app, creates a size chart, assigns it to products or a collection, and adds the size chart block to the product page. Shoppers click 'Size chart' to see the measurements.",
+    "hasPlans": "no",
+    "developerAccount": "yes",
+    "devStore": "your-dev-store.myshopify.com"
+  },
+  "expect": {
+    "surfaces": [
+      "embedded-admin",
+      "theme-extension"
+    ],
+    "scopes": {
+      "required": [
+        "read_products"
+      ],
+      "forbidden": [
+        "read_orders",
+        "write_orders",
+        "read_customers",
+        "write_customers",
+        "read_inventory"
+      ]
+    },
+    "mentions": [
+      {
+        "label": "metaobjects or metafields for the charts",
+        "pattern": "metaobject|metafield"
+      },
+      {
+        "label": "the theme app block",
+        "pattern": "app block|blocks/"
+      }
+    ],
+    "criteria": [
+      "The architecture says the app is free and adds no billing.",
+      "It defines which chart wins when a product matches more than one assignment (product, collection, tag).",
+      "The storefront popup is keyboard accessible and can be closed with Escape.",
+      "The cm/inch switch works on the storefront without a page reload.",
+      "Every admin screen has loading, empty and error states."
+    ]
+  },
+  "minScore": 0.8
+}

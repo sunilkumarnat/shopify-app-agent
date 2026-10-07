@@ -37,6 +37,20 @@ export type ArchitectureOutput = z.infer<typeof ArchitectureOutputSchema>;
 
 const ARCHITECTURE_JSON_SCHEMA = outputSchemaOf(ArchitectureOutputSchema);
 
+// Sections every architecture.md has, in order; the evals check for them.
+export const ARCHITECTURE_SECTIONS = [
+  "Overview",
+  "Functionalities",
+  "Plans and billing",
+  "Admin screens",
+  "Storefront (theme app extension)",
+  "Data model",
+  "Admin GraphQL operations",
+  "Webhooks",
+  "Access scopes",
+  "Open questions",
+];
+
 const SYSTEM_PROMPT = `You are a senior Shopify app architect. You turn a merchant-facing app idea into an architecture a developer can build from without further questions.
 
 The app will be built with Shopify CLI's React Router app template (TypeScript), embedded in the Shopify admin with App Bridge, using Polaris web components for the admin UI, Admin GraphQL only (never REST), Prisma for the app's own data, and theme app extensions (app blocks and app embeds) for anything shoppers see.
@@ -49,7 +63,7 @@ Rules:
 - Design loading, empty and error states for every admin screen.
 - Do not invent requirements the user didn't give. List anything ambiguous under "Open questions" instead.
 
-The architectureMarkdown must have these sections, in order: Overview; Functionalities (each mapped to where it is built); Plans and billing; Admin screens; Storefront (theme app extension); Data model; Admin GraphQL operations; Webhooks; Access scopes; Open questions.`;
+The architectureMarkdown must have these sections, in order: ${ARCHITECTURE_SECTIONS.join("; ")}. In Functionalities, map each functionality to where it is built.`;
 
 export function architecturePrompt(spec: AppSpec, feedback: string[], previous?: string): string {
   const parts = [

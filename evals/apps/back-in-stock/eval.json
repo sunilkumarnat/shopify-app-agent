@@ -1,0 +1,44 @@
+{
+  "id": "back-in-stock",
+  "answers": {
+    "name": "Restock Alert",
+    "description": "Lets shoppers ask to be emailed when a sold-out product is back in stock, so merchants recover lost sales.",
+    "functionalities": "Show a 'Notify me when available' form on sold-out product variants; Store each shopper's email request per variant; Email shoppers automatically when the variant is restocked; Show the merchant a list of requests and how many were sent",
+    "flow": "The merchant installs the app and adds the notify block to the product page. A shopper on a sold-out variant enters their email. When the merchant restocks it, the app emails everyone waiting and marks their requests as sent.",
+    "hasPlans": "yes",
+    "plans": "Starter: $0, up to 50 alert emails a month; Growth: $15/month, 14-day trial, unlimited alert emails, custom email text",
+    "developerAccount": "yes",
+    "devStore": "your-dev-store.myshopify.com"
+  },
+  "expect": {
+    "surfaces": [
+      "embedded-admin",
+      "theme-extension"
+    ],
+    "scopes": {
+      "required": [
+        "read_products"
+      ],
+      "forbidden": [
+        "read_orders",
+        "write_orders",
+        "write_customers",
+        "write_products"
+      ]
+    },
+    "mentions": [
+      {
+        "label": "an inventory or product webhook for restocks",
+        "pattern": "inventory_levels/update|products/update"
+      }
+    ],
+    "criteria": [
+      "Shopper emails are deleted or anonymised when Shopify sends customers/redact and shop/redact.",
+      "customers/data_request returns the shopper emails the app stores.",
+      "The storefront form is protected against spam or abuse (for example rate limiting or a honeypot).",
+      "The Starter plan's 50-emails-a-month limit is counted and enforced on the server.",
+      "It names how emails are sent (an email provider) and keeps provider credentials in environment variables."
+    ]
+  },
+  "minScore": 0.8
+}

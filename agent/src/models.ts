@@ -6,6 +6,7 @@ export const MODELS = {
   reviewer: { model: "claude-opus-5-5", effort: "high" },
   deployer: { model: "claude-opus-5-5", effort: "high" },
   copywriter: { model: "claude-opus-5-5", effort: "high" },
+  grader: { model: "claude-opus-5-5", effort: "high" },
 } as const;
 
 export type AgentRole = keyof typeof MODELS;
