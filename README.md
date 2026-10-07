@@ -2,7 +2,7 @@
 
 An AI agent that designs and develops Shopify apps (embedded admin apps and theme app extensions), from the first question to a deployed app with App Store listing suggestions. The full design is in [`docs/design.md`](docs/design.md).
 
-> **Status: M1.** The agent asks every question, has Claude write the architecture, creates the app with Shopify CLI, and has Claude build it until typecheck, lint, tests and `shopify app build` pass. The Shopify checklist, testing on your store, deploying and listing suggestions are still placeholders until M2 and M3.
+> **Status: M2.** The agent asks every question, has Claude write the architecture, creates the app with Shopify CLI, has Claude build it until typecheck, lint, tests and `shopify app build` pass, then tests every functionality on your development store with Playwright and writes a test report with screenshots. The Shopify checklist, deploying and listing suggestions are still placeholders until M3.
 
 ## Requirements
 
@@ -17,8 +17,9 @@ What you need depends on how far you want a run to go.
 | **Anthropic API key** | Claude writing the architecture and building the app | [console.anthropic.com](https://console.anthropic.com) → API keys |
 | **Shopify CLI (latest)** | Creating and building the app | `shopify version` · install with `npm install -g @shopify/cli@latest` |
 | **Shopify developer account** with app development permissions | Creating the app in the Dev Dashboard | [dev.shopify.com](https://dev.shopify.com) |
-| **A Shopify development store** | Installing and testing the app (from M2) | Create one with `shopify store create dev` |
-| **Latest Chrome or Firefox** | Previewing the app on your store (from M2) | — |
+| **A Shopify development store** | Installing and testing the app | Create one with `shopify store create dev` |
+| **Latest Chrome or Firefox** | Previewing the app on your store and adding its theme block | — |
+| **A second terminal** | Keeping `shopify app dev` running while the agent tests the app | — |
 | **Your hosting provider's CLI and account** (for example `flyctl` for Fly.io) | The deploy step (from M3) | Depends on the host you name when the agent asks |
 
 These follow Shopify's [scaffold guide](https://shopify.dev/docs/apps/build/scaffold-app).
@@ -66,7 +67,7 @@ The agent then asks you everything in the terminal. You can stop with `Ctrl+C` a
 6. Whether you have a Shopify developer account and which development store to use, then confirmation to start development
 7. Creates the app with `shopify app init` (you log in and choose your organization in the terminal), adds the theme app extension, then Claude builds it and fixes anything that fails the checks
 8. Checks it against Shopify's App Store requirements and Built for Shopify recommendations *(M3)*
-9. Tests every functionality on your development store *(M2)*
+9. Tests every functionality on your development store: it asks you to run `shopify app dev --store <your store>` in a second terminal and gives you a link that adds the app's block to the product page, then Claude writes a Playwright test per functionality and fixes the app or tests until all pass. Type `ready` when the app is running.
 10. Where to host the app, then confirmation to deploy *(deploy itself in M3)*
 11. Suggests App Store listing details *(M3)*
 
@@ -89,6 +90,8 @@ The last three are for scripts and other non-interactive use. In a normal termin
 workspace/<app-id>/
 ├── spec.json            # your answers as a structured spec
 ├── architecture.md      # the architecture Claude writes and you review at step 5
+├── test-report.md       # each functionality, its tests and the result (step 9)
+├── screenshots/         # Playwright screenshots, named F<n>-<i>.png after the functionality
 ├── <app-name>/          # the Shopify app itself, created by shopify app init
 └── .agent/
     ├── state.json       # current step, answers and confirmations (lets a run resume)
@@ -108,6 +111,8 @@ workspace/<app-id>/
 | `Shopify CLI is not installed` | Run `npm install -g @shopify/cli@latest`, then `resume`. |
 | `Creating the app needs you to log in to Shopify` | The scaffold step was run without a terminal. Run `resume` in a normal terminal. |
 | `checks still failing after 3 fix rounds` | Open the app folder, look at the failing check in `.agent/run-log.jsonl`, fix it or ask Claude, then `resume`. |
+| `functionalities F2, ... still failing after 3 fix rounds` | Open `test-report.md` to see which tests fail and why. Check `shopify app dev` is still running and the app block is on the product page, then `resume`. |
+| Storefront tests stop at a password page | Put the store's storefront password in `.env` as `SHOPIFY_STOREFRONT_PASSWORD`, then `resume`. |
 | `No question is waiting for an answer` | The run is waiting for a confirmation, not an answer. Run `status` to see what it needs. |
 
 ## Repository layout
@@ -116,9 +121,9 @@ workspace/<app-id>/
 |---|---|
 | `agent/src/cli.ts` | Command-line entry point and interactive prompts |
 | `agent/src/orchestrator.ts` | Runs the steps in order: questions, confirmations, retries, resume |
-| `agent/src/phases/` | One module per step: questions, plans, architecture, scaffold and build are real; the rest are placeholders |
+| `agent/src/phases/` | One module per step: questions, plans, architecture, scaffold, build and test are real; the rest are placeholders |
 | `agent/src/claude.ts` | Runs Claude through the Claude Agent SDK with a budget and a tool allowlist |
-| `agent/src/tools/` | Shopify CLI wrapper (allowlist, deploy needs confirmation), check runner, command runner |
+| `agent/src/tools/` | Shopify CLI wrapper (allowlist, deploy needs confirmation), check runner, command runner, Playwright report reader |
 | `agent/src/state/` | App spec schema and saved run state |
 | `agent/src/models.ts` | Which Claude model each agent role uses |
 | `evals/apps/` | Sample apps for testing the agent end to end, starting with Stock Signal |

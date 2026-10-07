@@ -50,6 +50,7 @@ Non-goals for v1: Hydrogen storefronts, POS extensions, App Store submission (th
 | Orchestrator | Runs the phase state machine, keeps `spec.md` and `run-log.jsonl`, decides retries, asks the user's questions and confirmations | `claude-opus-5-5` |
 | Product/UX agent | Asks the process questions, then turns the answers into the architecture: screens, data model, scopes, extension points | `claude-opus-5-5` |
 | Builder agent | Implements the architecture in the scaffolded project, writes tests, then fixes failing checks in the same session (up to 3 rounds) | `claude-opus-5-5` |
+| Tester agent | Writes a Playwright test per functionality against the dev store, then fixes the app or test until each passes (up to 3 rounds) | `claude-opus-5-5` |
 | Reviewer agent | Reviews diffs for scope creep, tenant isolation, webhook HMAC, GDPR handlers, Polaris misuse, a11y | `claude-opus-5-5` (from M3) |
 
 All agents share a cached system prompt (Shopify conventions, repo layout, coding rules) using prompt caching, so the long context is paid for once per run.
@@ -91,7 +92,7 @@ This is the process Sunil set on 2026-10-07. The agent always follows these step
 | 6 | Start development | Asks whether the user has a Shopify developer account and which development store to use, then asks for confirmation to start. Credentials go in `.env`, never in an answer. | **Answers and confirms** | Dev store named, confirmation given |
 | 7 | Scaffold and build | Follows Shopify's [scaffold guide](https://shopify.dev/docs/apps/build/scaffold-app): `shopify app init --template reactRouter --flavor typescript --name <app name>` in the terminal (the user logs in and picks the organization), then `shopify app generate extension` for the theme app extension. The builder agent then implements the architecture and fixes failing checks. | Logs in to Shopify | `run_checks()` green |
 | 8 | Shopify checklist | Checks the app against Shopify's App Store requirements and Built for Shopify recommendations (auth, scopes, compliance webhooks, Polaris, performance, a11y) and fixes what fails | — | No blocking items |
-| 9 | Test functionalities | Installs on the dev store, runs a Playwright flow for each functionality, adds the app block to a theme, captures screenshots | — | Every functionality passes |
+| 9 | Test functionalities | Asks the user to run `shopify app dev --store <dev store>` in a second terminal (installs the app) and gives a theme editor link that adds the app block to the product page. The tester agent writes Playwright tests tagged `[F<n>]` per functionality (storefront in the browser, admin through the app's loaders and actions); the agent runs them, sends failures back to the tester to fix the app or the test (up to 3 rounds), reruns `run_checks()`, and writes `test-report.md` with screenshots | **Starts `shopify app dev`, adds the block, types `ready`** | Every functionality has a passing test and `run_checks()` is green |
 | 10 | Deploy | Asks where to host the app, then asks for confirmation; deploys to that host and runs `shopify app deploy` | **Answers and confirms the deploy** | Health check passes, app version created |
 | 11 | Listing suggestions | Drafts App Store listing details: name, tagline, description, feature list, screenshots to take, pricing ideas, support and privacy links | Reviews | — |
 
@@ -153,6 +154,6 @@ The agent is TypeScript to match the Shopify ecosystem (CLI, templates, App Brid
 
 1. **M0, skeleton:** repo, orchestrator with phases stubbed, tool wrappers for CLI and checks.
 2. **M1, plans, architecture and build:** plans step; Claude writes the architecture from the answers; scaffold per Shopify's guide; Claude builds the app and fixes it until `run_checks()` is green.
-3. **M2, test functionalities:** dev-store install, a Playwright flow per functionality, screenshots, theme block visible.
+3. **M2, test functionalities (done):** dev-store install via `shopify app dev`, a Playwright test per functionality, fix loop, `test-report.md` with screenshots, theme block visible.
 4. **M3, checklist, deploy and listing:** Shopify checklist step, hosted deploy and `shopify app deploy` after confirmation, listing suggestions.
 5. **M4, evals:** three more eval apps, scored automatically on every agent change.

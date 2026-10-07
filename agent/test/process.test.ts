@@ -17,14 +17,17 @@ const REPLIES: Record<string, string> = {
   plans: "Basic: $9/month, 7-day trial, up to 50 products; Pro: $29/month, unlimited products, custom badge text",
   developerAccount: "yes",
   devStore: "stock-signal-dev.myshopify.com",
+  testPreview: "ready",
   hosting: "Fly.io",
 };
 
-async function setup(opts: { replies?: Record<string, string>; failingRounds?: number; interactive?: boolean } = {}) {
+async function setup(
+  opts: { replies?: Record<string, string>; failingRounds?: number; failingTestRuns?: number; interactive?: boolean } = {},
+) {
   const store = new RunStore(await mkdtemp(join(tmpdir(), "agent-")));
   await store.init("stock-signal");
   const { claude, requests } = fakeClaude();
-  const { runner, commands } = fakeRunner({ failingRounds: opts.failingRounds });
+  const { runner, commands } = fakeRunner({ failingRounds: opts.failingRounds, failingTestRuns: opts.failingTestRuns });
   const phases = createPhases({ claude, runner, interactive: opts.interactive ?? true });
   const replies = opts.replies ?? REPLIES;
   const asked: string[] = [];
@@ -92,7 +95,7 @@ describe("the development process", () => {
 
     const state = await answerAll();
     expect(state.pendingGate).toBe("deploy");
-    expect(asked.slice(8)).toEqual(["hosting"]);
+    expect(asked.slice(8)).toEqual(["testPreview", "hosting"]);
 
     expect(commands).toContain(
       `shopify app init --template reactRouter --flavor typescript --name Stock Signal --path ${store.appDir} --package-manager npm`,
